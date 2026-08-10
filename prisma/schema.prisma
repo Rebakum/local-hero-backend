@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  serviceProvider
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id                     String           @id @default(uuid())
+  name                   String
+  email                  String           @unique
+  password               String
+  role                   Role             @default(user)
+  phone                  String?
+  avatar                 String?
+  approvalStatus         ApprovalStatus   @default(APPROVED)
+  category               String?
+  experienceYears        Int?
+  serviceDetails         String?
+  resetPasswordToken     String?
+  resetPasswordExpiresAt DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  sessions              Session[]
+  providerApplications  ProviderApplication[] @relation("UserApplications")
+  reviewedApplications  ProviderApplication[] @relation("ReviewedApplications")
+  professional          Professional?
+  bookings              Booking[]              @relation("CustomerBookings")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  userAgent    String?
+  ipAddress    String?
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Professional {
+  id              String   @id @default(uuid())
+  userId          String?  @unique
+  name            String
+  trade           String
+  companyName     String
+  avatar          String?
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  jobsCompleted   Int      @default(0)
+  hourlyRate      Int      @default(0)
+  location        String
+  postcodeArea    String
+  responseMinutes Int      @default(30)
+  verifiedStatus  Json     @default("{}")
+  bio             String
+  specialties     String[]
+  availability    String   @default("Available Today")
+  portfolioImages String[]
+  badgeText       String?
+  isFeatured      Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+}
+
+model Trade {
+  id              String   @id @default(uuid())
+  category        String
+  subtitle        String?
+  iconName        String
+  description     String
+  avgHourlyRate   String
+  activeProsCount Int      @default(0)
+  popularTasks    String[]
+  badge           String?
+  featuredService Json
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BeforeAfterProject {
+  id             String   @id @default(uuid())
+  title          String
+  trade          String
+  location       String
+  beforeImage    String?
+  afterImage     String?
+  description    String
+  cost           String
+  completionDays String
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Testimonial {
+  id           String   @id @default(uuid())
+  author       String
+  role         String
+  city         String
+  trade        String
+  rating       Int      @default(5)
+  date         String
+  comment      String
+  verifiedJob  String
+  avatar       String?
+  source       String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FAQ {
+  id       String @id @default(uuid())
+  category String
+  question String
+  answer   String
+  sortOrder Int  @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProviderApplication {
+  id              String         @id @default(uuid())
+  userId          String
+  trade           String
+  companyName     String
+  bio             String
+  hourlyRate      Int
+  location        String
+  postcodeArea    String
+  specialties     String[]
+  experienceYears Int
+  phone           String
+  avatar          String?
+  portfolioImages String[]
+  status          ApprovalStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user     User      @relation("UserApplications", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User?     @relation("ReviewedApplications", fields: [reviewedBy], references: [id], onDelete: SetNull)
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  customerId     String
+  professionalId String?
+  trade          String
+  postcode       String
+  address        String
+  bookingDate    DateTime
+  timeSlot       String
+  urgency        String        @default("Standard")
+  description    String
+  fullName       String
+  email          String
+  phone          String
+  notes          String?
+  status         BookingStatus @default(PENDING)
+  priceInPence   Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  customer     User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  payment      Payment?
+
+  @@index([customerId])
+  @@index([professionalId])
+  @@index([status])
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  bookingId             String        @unique
+  amountInPence         Int
+  currency              String        @default("gbp")
+  status                PaymentStatus @default(PENDING)
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}

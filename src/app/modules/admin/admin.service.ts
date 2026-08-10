@@ -129,7 +129,6 @@ const getDashboardStats = async () => {
     rejectedApplications,
     totalTrades,
     totalTestimonials,
-    totalFAQs,
     totalProjects,
   ] = await Promise.all([
     prisma.user.count(),
@@ -140,7 +139,6 @@ const getDashboardStats = async () => {
     prisma.providerApplication.count({ where: { status: "REJECTED" } }),
     prisma.trade.count(),
     prisma.testimonial.count(),
-    prisma.fAQ.count(),
     prisma.beforeAfterProject.count(),
   ]);
 
@@ -153,7 +151,6 @@ const getDashboardStats = async () => {
     rejectedApplications,
     totalTrades,
     totalTestimonials,
-    totalFAQs,
     totalProjects,
   };
 };

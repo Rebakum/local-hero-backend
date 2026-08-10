@@ -3,13 +3,7 @@ import { ProviderApplicationController } from "./provider-application.controller
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
-import {
-  CreateProviderApplicationValidation,
-  UpdateProviderApplicationValidation,
-  GetProviderApplicationValidation,
-  ApproveProviderApplicationValidation,
-  RejectProviderApplicationValidation,
-} from "./provider-application.interface";
+import { ProviderApplicationValidation } from "./provider-application.validation";
 
 const router = Router();
 
@@ -18,7 +12,7 @@ router.post(
   "/",
   authGuard,
   roleGuard("user"),
-  validateRequest(CreateProviderApplicationValidation),
+  validateRequest(ProviderApplicationValidation.createProviderApplicationValidation),
   ProviderApplicationController.create
 );
 
@@ -32,7 +26,7 @@ router.patch(
   "/:id",
   authGuard,
   roleGuard("user"),
-  validateRequest(UpdateProviderApplicationValidation),
+  validateRequest(ProviderApplicationValidation.updateProviderApplicationValidation),
   ProviderApplicationController.updateMyApplication
 );
 
@@ -41,6 +35,7 @@ router.get(
   "/",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
+  validateRequest(ProviderApplicationValidation.getAllProviderApplicationsQueryValidation),
   ProviderApplicationController.getAll
 );
 
@@ -48,7 +43,7 @@ router.get(
   "/:id",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(GetProviderApplicationValidation),
+  validateRequest(ProviderApplicationValidation.getProviderApplicationValidation),
   ProviderApplicationController.getById
 );
 
@@ -56,7 +51,7 @@ router.patch(
   "/:id/approve",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(ApproveProviderApplicationValidation),
+  validateRequest(ProviderApplicationValidation.approveProviderApplicationValidation),
   ProviderApplicationController.approve
 );
 
@@ -64,7 +59,7 @@ router.patch(
   "/:id/reject",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(RejectProviderApplicationValidation),
+  validateRequest(ProviderApplicationValidation.rejectProviderApplicationValidation),
   ProviderApplicationController.reject
 );
 

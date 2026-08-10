@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { BeforeAfterService } from "./before-after.service";
-import { IGetAllBeforeAfterQuery } from "./before-after.interface";
+import { TGetBeforeAfterQuery } from "./before-after.validation";
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const result = await BeforeAfterService.getAll(
-    req.query as IGetAllBeforeAfterQuery
+    req.query as TGetBeforeAfterQuery
   );
 
   sendResponse(

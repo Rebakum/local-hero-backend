@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { TradeService } from "./trade.service";
-import { IGetAllTradesQuery } from "./trade.interface";
+import { TGetTradesQuery } from "./trade.validation";
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const result = await TradeService.getAll(
-    req.query as IGetAllTradesQuery
+    req.query as TGetTradesQuery
   );
 
   sendResponse(

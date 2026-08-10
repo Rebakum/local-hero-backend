@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { BookingService } from "./booking.service";
-import { IGetAllBookingsQuery } from "./booking.interface";
+import { TGetBookingsQuery } from "./booking.validation";
 
 const create = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.userId;
@@ -23,7 +23,7 @@ const getProviderBookings = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
-  const result = await BookingService.getAll(req.query as IGetAllBookingsQuery);
+  const result = await BookingService.getAll(req.query as TGetBookingsQuery);
   sendResponse(res, 200, "Bookings retrieved successfully", result.bookings, result.meta);
 });
 

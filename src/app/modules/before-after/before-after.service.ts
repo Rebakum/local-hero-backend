@@ -1,8 +1,8 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
-import { IGetAllBeforeAfterQuery } from "./before-after.interface";
+import { TGetBeforeAfterQuery } from "./before-after.validation";
 
-const getAll = async (query: IGetAllBeforeAfterQuery) => {
+const getAll = async (query: TGetBeforeAfterQuery) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;

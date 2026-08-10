@@ -58,6 +58,7 @@ model User {
   reviewedApplications  ProviderApplication[] @relation("ReviewedApplications")
   professional          Professional?
   bookings              Booking[]              @relation("CustomerBookings")
+  testimonials          Testimonial[]
 }
 
 model Session {
@@ -134,31 +135,37 @@ model BeforeAfterProject {
 }
 
 model Testimonial {
-  id           String   @id @default(uuid())
-  author       String
-  role         String
-  city         String
-  trade        String
-  rating       Int      @default(5)
-  date         String
-  comment      String
-  verifiedJob  String
-  avatar       String?
-  source       String
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String        @id @default(uuid())
+  author         String
+  role           String        @default("Homeowner") // e.g., "Homeowner", "Business Owner"
+  city           String
+  trade          String        // e.g., "Plumbing", "Electrical"
+  rating         Int           @default(5)
+  date           String
+  comment        String        @db.Text
+  verifiedJob    String        // Job/Service details summary
+  avatar         String?
+  source         String        @default("PLATFORM") // e.g., "PLATFORM", "GOOGLE", "TRUSTPILOT"
+  sortOrder      Int           @default(0)
+  
+  // Moderation & Visibility Fields
+  isApproved     Boolean       @default(true)  // Admin can hide/show
+  isFeatured     Boolean       @default(false) // Show on homepage hero/slider
+
+  // Optional Relations with Booking & User
+  bookingId      String?       @unique
+  booking        Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([isApproved, isFeatured])
 }
 
-model FAQ {
-  id       String @id @default(uuid())
-  category String
-  question String
-  answer   String
-  sortOrder Int  @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+
 
 model ProviderApplication {
   id              String         @id @default(uuid())
@@ -208,6 +215,7 @@ model Booking {
   customer     User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
   professional Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
   payment      Payment?
+  testimonial  Testimonial?
 
   @@index([customerId])
   @@index([professionalId])

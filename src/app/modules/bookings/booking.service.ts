@@ -1,6 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
-import { IGetAllBookingsQuery } from "./booking.interface";
+import { TGetBookingsQuery } from "./booking.validation";
 
 interface ICreateBookingInput {
   trade: string;
@@ -94,7 +94,7 @@ const getProviderBookings = async (userId: string) => {
   });
 };
 
-const getAll = async (query: IGetAllBookingsQuery) => {
+const getAll = async (query: TGetBookingsQuery) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;

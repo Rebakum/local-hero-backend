@@ -3,39 +3,48 @@ import { TestimonialController } from "./testimonial.controller";
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
-import {
-  CreateTestimonialValidation,
-  UpdateTestimonialValidation,
-  GetTestimonialValidation,
-} from "./testimonial.interface";
+import { TestimonialValidation } from "./testimonial.validation";
 
 const router = Router();
 
-router.get("/", TestimonialController.getAll);
+// Public: Get all testimonials
+router.get(
+  "/",
+  validateRequest(TestimonialValidation.getAllTestimonialsQueryValidation),
+  TestimonialController.getAll
+);
 
-router.get("/:id", TestimonialController.getById);
+// Public: Get single testimonial by ID
+router.get(
+  "/:id",
+  validateRequest(TestimonialValidation.getTestimonialValidation),
+  TestimonialController.getById
+);
 
+// Authenticated users can create a testimonial
 router.post(
   "/",
   authGuard,
-  roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(CreateTestimonialValidation),
+  roleGuard("user", "serviceProvider", "ADMIN", "SUPER_ADMIN"),
+  validateRequest(TestimonialValidation.createTestimonialValidation),
   TestimonialController.create
 );
 
+// User can update THEIR OWN, Admin/Super Admin can update ANY
 router.patch(
   "/:id",
   authGuard,
-  roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(UpdateTestimonialValidation),
+  roleGuard("user", "serviceProvider", "ADMIN", "SUPER_ADMIN"),
+  validateRequest(TestimonialValidation.updateTestimonialValidation),
   TestimonialController.update
 );
 
+// User can delete THEIR OWN, Admin/Super Admin can delete ANY
 router.delete(
   "/:id",
   authGuard,
-  roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(GetTestimonialValidation),
+  roleGuard("user", "serviceProvider", "ADMIN", "SUPER_ADMIN"),
+  validateRequest(TestimonialValidation.getTestimonialValidation),
   TestimonialController.deleteTestimonial
 );
 

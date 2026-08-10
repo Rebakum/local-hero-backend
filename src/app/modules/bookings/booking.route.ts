@@ -3,12 +3,7 @@ import { BookingController } from "./booking.controller";
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
-import {
-  CreateBookingValidation,
-  UpdateBookingStatusValidation,
-  AssignProfessionalValidation,
-  GetBookingValidation,
-} from "./booking.interface";
+import { BookingValidation } from "./booking.validation";
 
 const router = Router();
 
@@ -17,7 +12,7 @@ router.post(
   "/",
   authGuard,
   roleGuard("user"),
-  validateRequest(CreateBookingValidation),
+  validateRequest(BookingValidation.createBookingValidation),
   BookingController.create
 );
 
@@ -37,22 +32,21 @@ router.get(
   "/",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
+  validateRequest(BookingValidation.getAllBookingsQueryValidation),
   BookingController.getAll
 );
 
 router.get(
   "/:id",
   authGuard,
-  validateRequest(GetBookingValidation),
+  validateRequest(BookingValidation.getBookingValidation),
   BookingController.getById
 );
 
-// Accept / reject / start / complete / cancel a booking, optionally
-// attaching a quoted price (in pence) at the same time.
 router.patch(
   "/:id/status",
   authGuard,
-  validateRequest(UpdateBookingStatusValidation),
+  validateRequest(BookingValidation.updateBookingStatusValidation),
   BookingController.updateStatus
 );
 
@@ -61,7 +55,7 @@ router.patch(
   "/:id/assign",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(AssignProfessionalValidation),
+  validateRequest(BookingValidation.assignProfessionalValidation),
   BookingController.assignProfessional
 );
 

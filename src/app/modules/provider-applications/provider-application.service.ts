@@ -1,6 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
-import { IGetAllProviderApplicationsQuery } from "./provider-application.interface";
+import { TGetProviderApplicationsQuery } from "./provider-application.validation";
 
 const create = async (userId: string, data: Record<string, unknown>) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -82,7 +82,7 @@ const updateMyApplication = async (
   return updated;
 };
 
-const getAll = async (query: IGetAllProviderApplicationsQuery) => {
+const getAll = async (query: TGetProviderApplicationsQuery) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;

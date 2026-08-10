@@ -1,8 +1,8 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
-import { IGetAllTradesQuery } from "./trade.interface";
+import { TGetTradesQuery } from "./trade.validation";
 
-const getAll = async (query: IGetAllTradesQuery) => {
+const getAll = async (query: TGetTradesQuery) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;

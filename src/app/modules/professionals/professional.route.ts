@@ -11,10 +11,17 @@ import {
 
 const router = Router();
 
+// 1. Get All Professionals
 router.get("/", ProfessionalController.getAll);
 
-router.get("/:id", ProfessionalController.getById);
+// 2. Get Single Professional (ADDED validateRequest)
+router.get(
+  "/:id",
+  validateRequest(GetProfessionalValidation),
+  ProfessionalController.getById
+);
 
+// 3. Create Professional
 router.post(
   "/",
   authGuard,
@@ -23,6 +30,7 @@ router.post(
   ProfessionalController.create
 );
 
+// 4. Update Professional
 router.patch(
   "/:id",
   authGuard,
@@ -31,6 +39,7 @@ router.patch(
   ProfessionalController.update
 );
 
+// 5. Delete Professional
 router.delete(
   "/:id",
   authGuard,

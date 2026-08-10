@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { ProviderApplicationService } from "./provider-application.service";
-import { IGetAllProviderApplicationsQuery } from "./provider-application.interface";
+import { TGetProviderApplicationsQuery } from "./provider-application.validation";
 
 const create = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
@@ -43,7 +43,7 @@ const updateMyApplication = catchAsync(async (req: Request, res: Response) => {
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const result = await ProviderApplicationService.getAll(
-    req.query as IGetAllProviderApplicationsQuery
+    req.query as TGetProviderApplicationsQuery
   );
 
   sendResponse(

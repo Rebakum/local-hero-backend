@@ -4,10 +4,6 @@ import stripe from "../../../config/stripe";
 import config from "../../../config";
 import AppError from "../../utils/AppError";
 
-// Creates (or reuses) a Stripe Checkout Session so the customer can pay the
-// quoted price for their booking. The booking must already have a price set
-// by the professional/admin (via PATCH /bookings/:id/status) before a
-// customer can pay for it.
 const createCheckoutSession = async (bookingId: string, customerId: string) => {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -97,9 +93,98 @@ const getPaymentByBooking = async (
   return booking.payment;
 };
 
-// Handles the raw Stripe webhook event. Must be called with the *raw* request
-// body (see payment.route.ts, which uses express.raw() only for this path)
-// because Stripe signs the exact byte payload.
+// Admin & Super Admin: Get All Payments History
+const getAllPayments = async (query: {
+  page?: string;
+  limit?: string;
+  status?: string;
+  search?: string;
+}) => {
+  const page = parseInt(query.page || "1", 10);
+  const limit = parseInt(query.limit || "10", 10);
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+
+  if (query.status) {
+    where.status = query.status;
+  }
+
+  if (query.search) {
+    where.OR = [
+      { booking: { fullName: { contains: query.search, mode: "insensitive" } } },
+      { booking: { email: { contains: query.search, mode: "insensitive" } } },
+      { stripeSessionId: { contains: query.search, mode: "insensitive" } },
+      { stripePaymentIntentId: { contains: query.search, mode: "insensitive" } },
+    ];
+  }
+
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        booking: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            trade: true,
+            status: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            professional: {
+              select: {
+                id: true,
+                name: true,
+                trade: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.payment.count({ where }),
+  ]);
+
+  return {
+    payments,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    },
+  };
+};
+
+// Admin & Super Admin: Get Payment Overall Statistics
+const getPaymentStats = async () => {
+  const [totalRevenue, paidCount, pendingCount, failedCount] = await Promise.all([
+    prisma.payment.aggregate({
+      _sum: { amountInPence: true },
+      where: { status: "PAID" },
+    }),
+    prisma.payment.count({ where: { status: "PAID" } }),
+    prisma.payment.count({ where: { status: "PENDING" } }),
+    prisma.payment.count({ where: { status: "FAILED" } }),
+  ]);
+
+  return {
+    totalRevenueInPence: totalRevenue._sum.amountInPence || 0,
+    paidCount,
+    pendingCount,
+    failedCount,
+  };
+};
+
 const handleWebhookEvent = async (rawBody: Buffer, signature: string) => {
   let event: Stripe.Event;
 
@@ -126,8 +211,6 @@ const handleWebhookEvent = async (rawBody: Buffer, signature: string) => {
         },
       });
 
-      // Payment confirmed -> move the job from "accepted/quoted" into
-      // "in progress" so the provider knows they're clear to start work.
       await prisma.booking.updateMany({
         where: { id: bookingId, status: { in: ["PENDING", "ACCEPTED"] } },
         data: { status: "IN_PROGRESS" },
@@ -148,7 +231,6 @@ const handleWebhookEvent = async (rawBody: Buffer, signature: string) => {
     }
 
     default:
-      // Ignore event types we don't act on.
       break;
   }
 
@@ -158,5 +240,7 @@ const handleWebhookEvent = async (rawBody: Buffer, signature: string) => {
 export const PaymentService = {
   createCheckoutSession,
   getPaymentByBooking,
+  getAllPayments,
+  getPaymentStats,
   handleWebhookEvent,
 };

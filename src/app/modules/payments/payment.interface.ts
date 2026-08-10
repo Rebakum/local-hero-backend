@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export interface IPayment {
   id: string;
   bookingId: string;
@@ -12,15 +10,3 @@ export interface IPayment {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export const CreateCheckoutSessionValidation = z.object({
-  params: z.object({
-    bookingId: z.string().uuid("Invalid booking ID"),
-  }),
-});
-
-export const GetPaymentValidation = z.object({
-  params: z.object({
-    bookingId: z.string().uuid("Invalid booking ID"),
-  }),
-});

@@ -657,8 +657,7 @@ const trades = [
 async function main() {
   console.log("Seeding database...");
 
-  // Clear existing data
-  await prisma.fAQ.deleteMany();
+  // Clear existing data  
   await prisma.testimonial.deleteMany();
   await prisma.beforeAfterProject.deleteMany();
   await prisma.trade.deleteMany();
@@ -682,12 +681,7 @@ async function main() {
   }
   console.log(`Seeded ${testimonials.length} testimonials`);
 
-  // Seed FAQs
-  for (const faq of faqs) {
-    await prisma.fAQ.create({ data: faq });
-  }
-  console.log(`Seeded ${faqs.length} FAQs`);
-
+ 
   // Seed trades
   for (const trade of trades) {
     await prisma.trade.create({ data: trade });

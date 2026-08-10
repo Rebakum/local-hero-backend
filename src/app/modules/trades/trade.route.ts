@@ -3,39 +3,48 @@ import { TradeController } from "./trade.controller";
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
-import {
-  CreateTradeValidation,
-  UpdateTradeValidation,
-  GetTradeValidation,
-} from "./trade.interface";
+import { TradeValidation } from "./trade.validation";
 
 const router = Router();
 
-router.get("/", TradeController.getAll);
+// 1. Get All Trades
+router.get(
+  "/",
+  validateRequest(TradeValidation.getAllTradesQueryValidation),
+  TradeController.getAll
+);
 
-router.get("/:id", TradeController.getById);
+// 2. Get Single Trade by ID (Validation Added)
+router.get(
+  "/:id",
+  validateRequest(TradeValidation.getTradeValidation),
+  TradeController.getById
+);
 
+// 3. Create Trade (Admin & Super Admin)
 router.post(
   "/",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(CreateTradeValidation),
+  validateRequest(TradeValidation.createTradeValidation),
   TradeController.create
 );
 
+// 4. Update Trade (Admin & Super Admin)
 router.patch(
   "/:id",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(UpdateTradeValidation),
+  validateRequest(TradeValidation.updateTradeValidation),
   TradeController.update
 );
 
+// 5. Delete Trade (Admin & Super Admin)
 router.delete(
   "/:id",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(GetTradeValidation),
+  validateRequest(TradeValidation.getTradeValidation),
   TradeController.deleteTrade
 );
 

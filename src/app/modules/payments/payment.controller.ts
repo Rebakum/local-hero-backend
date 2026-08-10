@@ -17,9 +17,16 @@ const getPaymentByBooking = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Payment retrieved successfully", result);
 });
 
-// Stripe posts here with the raw body + a signature header. This route is
-// mounted with express.raw() (see payment.route.ts) so req.body is a Buffer,
-// not parsed JSON.
+const getAllPayments = catchAsync(async (req: Request, res: Response) => {
+  const result = await PaymentService.getAllPayments(req.query);
+  sendResponse(res, 200, "Payment history retrieved successfully", result.payments, result.meta);
+});
+
+const getPaymentStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await PaymentService.getPaymentStats();
+  sendResponse(res, 200, "Payment statistics retrieved successfully", result);
+});
+
 const webhook = catchAsync(async (req: Request, res: Response) => {
   const signature = req.headers["stripe-signature"];
   if (!signature || typeof signature !== "string") {
@@ -33,5 +40,7 @@ const webhook = catchAsync(async (req: Request, res: Response) => {
 export const PaymentController = {
   createCheckoutSession,
   getPaymentByBooking,
+  getAllPayments,
+  getPaymentStats,
   webhook,
 };

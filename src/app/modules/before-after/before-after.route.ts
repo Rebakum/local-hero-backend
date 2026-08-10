@@ -3,15 +3,15 @@ import { BeforeAfterController } from "./before-after.controller";
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
-import {
-  CreateBeforeAfterValidation,
-  UpdateBeforeAfterValidation,
-  GetBeforeAfterValidation,
-} from "./before-after.interface";
+import { BeforeAfterValidation } from "./before-after.validation";
 
 const router = Router();
 
-router.get("/", BeforeAfterController.getAll);
+router.get(
+  "/",
+  validateRequest(BeforeAfterValidation.getAllBeforeAfterQueryValidation),
+  BeforeAfterController.getAll
+);
 
 router.get("/:id", BeforeAfterController.getById);
 
@@ -19,7 +19,7 @@ router.post(
   "/",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(CreateBeforeAfterValidation),
+  validateRequest(BeforeAfterValidation.createBeforeAfterValidation),
   BeforeAfterController.create
 );
 
@@ -27,7 +27,7 @@ router.patch(
   "/:id",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(UpdateBeforeAfterValidation),
+  validateRequest(BeforeAfterValidation.updateBeforeAfterValidation),
   BeforeAfterController.update
 );
 
@@ -35,7 +35,7 @@ router.delete(
   "/:id",
   authGuard,
   roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(GetBeforeAfterValidation),
+  validateRequest(BeforeAfterValidation.getBeforeAfterValidation),
   BeforeAfterController.deleteProject
 );
 

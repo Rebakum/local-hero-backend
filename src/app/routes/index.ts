@@ -7,7 +7,6 @@ import { ProfessionalRoutes } from "../modules/professionals/professional.route"
 import { TradeRoutes } from "../modules/trades/trade.route";
 import { BeforeAfterRoutes } from "../modules/before-after/before-after.route";
 import { TestimonialRoutes } from "../modules/testimonials/testimonial.route";
-import { FAQRoutes } from "../modules/faqs/faq.route";
 import { ProviderApplicationRoutes } from "../modules/provider-applications/provider-application.route";
 import { UploadRoutes } from "../modules/upload/upload.route";
 import { BookingRoutes } from "../modules/bookings/booking.route";
@@ -24,7 +23,6 @@ const moduleRoutes = [
   { path: "/trades", route: TradeRoutes },
   { path: "/before-after", route: BeforeAfterRoutes },
   { path: "/testimonials", route: TestimonialRoutes },
-  { path: "/faqs", route: FAQRoutes },
   { path: "/provider-applications", route: ProviderApplicationRoutes },
   { path: "/uploads", route: UploadRoutes },
   { path: "/bookings", route: BookingRoutes },

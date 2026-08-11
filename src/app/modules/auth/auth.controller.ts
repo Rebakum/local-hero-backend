@@ -18,12 +18,16 @@ const parseExpirationToMs = (expiresIn: string): number => {
   return value * multipliers[unit];
 };
 
-const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+const isProduction = config.nodeEnv === "production";
 
+// In production the frontend and backend are deployed on different origins,
+// so the browser only sends/receives these cookies cross-site when
+// SameSite=None + Secure are set. In development (same host or localhost)
+// "lax" is safer and works with plain http.
 const cookieOptions = {
   httpOnly: true,
-  secure: config.nodeEnv === "production",
-  sameSite: "lax" as const,
+  secure: isProduction,
+  sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
 };
 
 const register = catchAsync(async (req: Request, res: Response) => {
@@ -40,7 +44,7 @@ const register = catchAsync(async (req: Request, res: Response) => {
 
   res.cookie("refreshToken", result.refreshToken, {
     ...cookieOptions,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
+    maxAge: parseExpirationToMs(config.jwt.refreshExpiresIn),
   });
 
   sendResponse(res, 201, "User registered successfully", {
@@ -63,7 +67,7 @@ const login = catchAsync(async (req: Request, res: Response) => {
 
   res.cookie("refreshToken", result.refreshToken, {
     ...cookieOptions,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
+    maxAge: parseExpirationToMs(config.jwt.refreshExpiresIn),
   });
 
   sendResponse(res, 200, "Login successful", {
@@ -89,7 +93,7 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
 
   res.cookie("refreshToken", result.refreshToken, {
     ...cookieOptions,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
+    maxAge: parseExpirationToMs(config.jwt.refreshExpiresIn),
   });
 
   sendResponse(res, 200, "Token refreshed successfully", {

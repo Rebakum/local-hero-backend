@@ -6,15 +6,36 @@ import {
   TUpdateTestimonialPayload,
 } from "./testimonial.validation";
 
-const getAll = async (query: TGetTestimonialsQuery) => {
+const getAll = async (
+  query: TGetTestimonialsQuery,
+  requester?: { role: string }
+) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;
+
+  const isAdmin =
+    !!requester && ["ADMIN", "SUPER_ADMIN"].includes(requester.role);
 
   const where: Record<string, unknown> = {};
 
   if (query.trade) {
     where.trade = query.trade;
+  }
+
+  // Public visitors must only ever see approved testimonials. Admins see
+  // everything by default (so the management screen can moderate) and can
+  // narrow down with the explicit isApproved filter.
+  if (isAdmin) {
+    if (query.isApproved !== undefined) {
+      where.isApproved = query.isApproved === "true";
+    }
+  } else {
+    where.isApproved = true;
+  }
+
+  if (query.isFeatured !== undefined) {
+    where.isFeatured = query.isFeatured === "true";
   }
 
   if (query.search) {
@@ -53,6 +74,15 @@ const getById = async (id: string) => {
   return testimonial;
 };
 
+// Testimonials posted by the logged-in user (used by the customer/provider
+// dashboard to list, edit and delete their own reviews).
+const getMyTestimonials = async (userId: string) => {
+  return prisma.testimonial.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
 const create = async (userId: string, data: TCreateTestimonialPayload) => {
   const testimonial = await prisma.testimonial.create({
     data: {
@@ -66,7 +96,7 @@ const create = async (userId: string, data: TCreateTestimonialPayload) => {
 
 const update = async (
   id: string,
-  user: { id: string; role: string },
+  user: { userId: string; role: string },
   data: TUpdateTestimonialPayload
 ) => {
   const existing = await prisma.testimonial.findUnique({ where: { id } });
@@ -76,14 +106,20 @@ const update = async (
   }
 
   const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(user.role);
-  
-  if (!isAdmin && (existing as any).userId !== user.id) {
+
+  if (!isAdmin && existing.userId !== user.userId) {
     throw new AppError(403, "You can only update your own testimonial");
   }
 
+  // Only admins may change moderation/visibility flags.
+  const { isApproved, isFeatured, ...ownerData } = data;
+  const safeData = isAdmin
+    ? data
+    : ownerData;
+
   const testimonial = await prisma.testimonial.update({
     where: { id },
-    data,
+    data: safeData,
   });
 
   return testimonial;
@@ -91,7 +127,7 @@ const update = async (
 
 const deleteTestimonial = async (
   id: string,
-  user: { id: string; role: string }
+  user: { userId: string; role: string }
 ) => {
   const existing = await prisma.testimonial.findUnique({ where: { id } });
 
@@ -100,7 +136,7 @@ const deleteTestimonial = async (
   }
 
   const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(user.role);
-  if (!isAdmin && (existing as any).userId !== user.id) {
+  if (!isAdmin && existing.userId !== user.userId) {
     throw new AppError(403, "You can only delete your own testimonial");
   }
 
@@ -110,6 +146,7 @@ const deleteTestimonial = async (
 export const TestimonialService = {
   getAll,
   getById,
+  getMyTestimonials,
   create,
   update,
   deleteTestimonial,

@@ -65,11 +65,13 @@ const approveUser = async (userId: string) => {
     throw new AppError(400, "User is not pending approval");
   }
 
+  // Only flips the approval status. Role changes are the Super Admin's
+  // responsibility (/super-admin/users/:id/role) — approving a pending
+  // user must never silently change their role.
   const updated = await prisma.user.update({
     where: { id: userId },
     data: {
       approvalStatus: "APPROVED",
-      role: "serviceProvider",
     },
     select: userSelect,
   });
@@ -88,11 +90,14 @@ const rejectUser = async (userId: string) => {
     throw new AppError(400, "User is not pending approval");
   }
 
+  // If the user applied as a provider (legacy apply-provider flow sets the
+  // role to serviceProvider while still PENDING), a rejection reverts them
+  // back to a regular user. Any other role is left untouched.
   const updated = await prisma.user.update({
     where: { id: userId },
     data: {
       approvalStatus: "REJECTED",
-      role: "user",
+      ...(user.role === "serviceProvider" ? { role: "user" as const } : {}),
     },
     select: userSelect,
   });

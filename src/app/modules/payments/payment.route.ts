@@ -1,20 +1,19 @@
-import express, { Router } from "express";
+import { Router } from "express";
+
 import { PaymentController } from "./payment.controller";
+
 import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
+
 import { PaymentValidation } from "./payment.validation";
 
 const router = Router();
 
-// Stripe Webhook Endpoint (Must receive raw body for signature verification)
-router.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  PaymentController.webhook
-);
-
-// Admin & Super Admin: Get all payment history with pagination & filters
+/**
+ * Admin & Super Admin
+ * Payment history
+ */
 router.get(
   "/history",
   authGuard,
@@ -22,7 +21,10 @@ router.get(
   PaymentController.getAllPayments
 );
 
-// Admin & Super Admin: Get overall payment statistics/summary
+/**
+ * Admin & Super Admin
+ * Payment statistics
+ */
 router.get(
   "/stats",
   authGuard,
@@ -30,20 +32,30 @@ router.get(
   PaymentController.getPaymentStats
 );
 
-// Customer Checkout Creation
+/**
+ * Customer
+ * Create Stripe Checkout Session
+ */
 router.post(
   "/checkout/:bookingId",
   authGuard,
   roleGuard("user"),
-  validateRequest(PaymentValidation.createCheckoutSessionValidation),
+  validateRequest(
+    PaymentValidation.createCheckoutSessionValidation
+  ),
   PaymentController.createCheckoutSession
 );
 
-// Get Payment Details by Booking ID (Customer or Admin/Super Admin)
+/**
+ * Customer/Admin/Super Admin
+ * Get payment by booking
+ */
 router.get(
   "/:bookingId",
   authGuard,
-  validateRequest(PaymentValidation.getPaymentValidation),
+  validateRequest(
+    PaymentValidation.getPaymentValidation
+  ),
   PaymentController.getPaymentByBooking
 );
 

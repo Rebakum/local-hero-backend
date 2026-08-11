@@ -20,7 +20,7 @@ const registerValidation = z.object({
       .string()
       .regex(/^[0-9+\-\s()]{7,20}$/, "Invalid phone number")
       .optional(),
-    role: z.enum(["user", "admin"]).default("user"),
+    role: z.enum(["user"]).default("user"),
   }),
 });
 

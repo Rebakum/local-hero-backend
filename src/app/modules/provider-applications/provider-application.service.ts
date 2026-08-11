@@ -171,6 +171,14 @@ const approve = async (id: string, reviewerId: string) => {
     throw new AppError(400, "Application is not pending approval");
   }
 
+  const applicant = await prisma.user.findUnique({
+    where: { id: application.userId },
+  });
+
+  if (!applicant) {
+    throw new AppError(404, "Applying user no longer exists");
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const updatedApplication = await tx.providerApplication.update({
       where: { id },
@@ -185,31 +193,48 @@ const approve = async (id: string, reviewerId: string) => {
       where: { id: application.userId },
       data: {
         role: "serviceProvider",
+        approvalStatus: "APPROVED",
         phone: application.phone,
       },
     });
 
-    const professional = await tx.professional.create({
-      data: {
-        userId: application.userId,
-        name: (await tx.user.findUnique({ where: { id: application.userId } }))?.name || "",
-        trade: application.trade,
-        companyName: application.companyName,
-        avatar: application.avatar,
-        hourlyRate: application.hourlyRate,
-        location: application.location,
-        postcodeArea: application.postcodeArea,
-        specialties: application.specialties,
-        bio: application.bio,
-        portfolioImages: application.portfolioImages,
-        responseMinutes: 30,
-        verifiedStatus: {
-          dbsChecked: false,
-          insured: false,
-          insuranceAmount: "",
-        },
-      },
+    // Professional.userId is unique: a user who reapplies after a rejection
+    // (or whose profile already exists) must get their profile refreshed,
+    // not a duplicate-constraint error.
+    const professionalData = {
+      name: applicant.name,
+      trade: application.trade,
+      companyName: application.companyName,
+      avatar: application.avatar,
+      hourlyRate: application.hourlyRate,
+      location: application.location,
+      postcodeArea: application.postcodeArea,
+      specialties: application.specialties,
+      bio: application.bio,
+      portfolioImages: application.portfolioImages,
+    };
+
+    const existingProfessional = await tx.professional.findUnique({
+      where: { userId: application.userId },
     });
+
+    const professional = existingProfessional
+      ? await tx.professional.update({
+          where: { userId: application.userId },
+          data: professionalData,
+        })
+      : await tx.professional.create({
+          data: {
+            userId: application.userId,
+            ...professionalData,
+            responseMinutes: 30,
+            verifiedStatus: {
+              dbsChecked: false,
+              insured: false,
+              insuranceAmount: "",
+            },
+          },
+        });
 
     return { application: updatedApplication, professional };
   });

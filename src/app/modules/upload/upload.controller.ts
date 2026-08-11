@@ -79,8 +79,6 @@ const deleteImage = catchAsync(async (req: Request, res: Response) => {
     throw new AppError(400, "publicId is required");
   }
 
-  // Only allow deleting images inside our own localhero/ folders, so this
-  // endpoint can't be used to delete arbitrary Cloudinary assets.
   if (!publicId.startsWith("localhero/")) {
     throw new AppError(400, "Invalid publicId");
   }

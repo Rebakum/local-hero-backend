@@ -6,7 +6,8 @@ import { TGetTestimonialsQuery } from "./testimonial.validation";
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const result = await TestimonialService.getAll(
-    req.query as TGetTestimonialsQuery
+    req.query as TGetTestimonialsQuery,
+    req.user
   );
 
   sendResponse(
@@ -25,8 +26,15 @@ const getById = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Testimonial retrieved successfully", result);
 });
 
+const getMyTestimonials = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+  const result = await TestimonialService.getMyTestimonials(userId);
+
+  sendResponse(res, 200, "Your testimonials retrieved successfully", result);
+});
+
 const create = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
+  const userId = req.user!.userId;
   const result = await TestimonialService.create(userId, req.body);
 
   sendResponse(res, 201, "Testimonial created successfully", result);
@@ -34,7 +42,7 @@ const create = catchAsync(async (req: Request, res: Response) => {
 
 const update = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const user = (req as any).user;
+  const user = req.user!;
   const result = await TestimonialService.update(id, user, req.body);
 
   sendResponse(res, 200, "Testimonial updated successfully", result);
@@ -42,7 +50,7 @@ const update = catchAsync(async (req: Request, res: Response) => {
 
 const deleteTestimonial = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const user = (req as any).user;
+  const user = req.user!;
   await TestimonialService.deleteTestimonial(id, user);
 
   sendResponse(res, 200, "Testimonial deleted successfully", null);
@@ -51,6 +59,7 @@ const deleteTestimonial = catchAsync(async (req: Request, res: Response) => {
 export const TestimonialController = {
   getAll,
   getById,
+  getMyTestimonials,
   create,
   update,
   deleteTestimonial,

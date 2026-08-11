@@ -1,5 +1,15 @@
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import config from "./index";
+
+if (!config.stripe.secretKey) {
+  throw new Error(
+    "STRIPE_SECRET_KEY is missing from environment variables"
+  );
+}
+
+const stripe = new Stripe(
+  config.stripe.secretKey
+);
 
 export default stripe;

@@ -5,7 +5,7 @@
   "main": "dist/server.js",
  "scripts": {
   "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-  "build": "prisma generate && tsc --skipLibCheck",
+  "build": "tsc --skipLibCheck",
   "vercel-build": "prisma generate && tsc --skipLibCheck",
   "start": "node dist/server.js",
   "db:migrate": "npx prisma migrate dev",

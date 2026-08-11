@@ -50,6 +50,8 @@ const getAllTestimonialsQueryValidation = z.object({
     limit: z.string().optional(),
     trade: z.string().trim().optional(),
     search: z.string().trim().optional(),
+    isApproved: z.enum(["true", "false"]).optional(),
+    isFeatured: z.enum(["true", "false"]).optional(),
   }),
 });
 

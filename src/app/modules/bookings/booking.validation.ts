@@ -36,6 +36,13 @@ const updateBookingStatusValidation = z.object({
     status: z.enum(BOOKING_STATUSES),
     priceInPence: z.number().int().positive().optional(),
     professionalId: z.string().uuid().optional(),
+    // Provider reschedule: optional new date/time applied with the (same) status.
+    bookingDate: z
+      .string()
+      .min(1, "Booking date is required")
+      .refine((val) => !Number.isNaN(Date.parse(val)), "Invalid booking date")
+      .optional(),
+    timeSlot: z.string().min(1, "Time slot is required").optional(),
   }),
   params: z.object({
     id: z.string().uuid("Invalid booking ID"),

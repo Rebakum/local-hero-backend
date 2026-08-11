@@ -4,3 +4,10 @@ dist/
 *.log
 
 .vercel
+
+# Compiled Prisma config artifact (source: prisma.config.ts)
+prisma.config.js
+
+# Compiled JS artifacts accidentally emitted into src/
+src/**/*.js
+src/**/*.js.map

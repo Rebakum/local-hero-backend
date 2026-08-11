@@ -36,6 +36,43 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// Quote request lifecycle (customer request -> businesses quote -> customer chooses).
+enum QuoteStatus {
+  PENDING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// Notification kinds pushed to users (customers, providers, admins).
+enum NotificationType {
+  NEW_QUOTE
+  QUOTE_RESPONSE
+  BOOKING_REQUEST
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLED
+  NEW_REVIEW
+  NEW_MESSAGE
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  GENERAL
+}
+
+// LocalHero subscription plans from the product blueprint.
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  FEATURED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 model User {
   id                     String           @id @default(uuid())
   name                   String
@@ -59,6 +96,11 @@ model User {
   professional          Professional?
   bookings              Booking[]              @relation("CustomerBookings")
   testimonials          Testimonial[]
+  quotes                Quote[]                @relation("CustomerQuotes")
+  conversations         Conversation[]         @relation("CustomerConversations")
+  sentMessages          Message[]              @relation("SentMessages")
+  notifications         Notification[]
+  favourites            SavedProfessional[]    @relation("FavouriteProfessionals")
 }
 
 model Session {
@@ -96,11 +138,31 @@ model Professional {
   badgeText       String?
   isFeatured      Boolean  @default(false)
   sortOrder       Int      @default(0)
+
+  // Business profile extras (product blueprint).
+  workingHours     Json?
+  certifications   String[]
+  insuranceInfo    String?
+  serviceAreas     String[]
+  yearsOfExperience Int?
+  isVerified       Boolean  @default(false)
+  isEmergency      Boolean  @default(false)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  bookings Booking[]
+  user                 User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  bookings             Booking[]
+  quoteResponses       QuoteResponse[]
+  conversations        Conversation[]
+  subscriptions        ProviderSubscription[]
+  favourites           SavedProfessional[]
+  testimonialsReceived Testimonial[]          @relation("ProfessionalTestimonials")
+
+  @@index([trade])
+  @@index([postcodeArea])
+  @@index([isVerified])
+  @@index([isEmergency])
 }
 
 model Trade {
@@ -144,28 +206,36 @@ model Testimonial {
   date           String
   comment        String        @db.Text
   verifiedJob    String        // Job/Service details summary
-  avatar         String?
+  avatar         String?       // Cloudinary image URL (avatars folder)
   source         String        @default("PLATFORM") // e.g., "PLATFORM", "GOOGLE", "TRUSTPILOT"
   sortOrder      Int           @default(0)
-  
+
   // Moderation & Visibility Fields
   isApproved     Boolean       @default(true)  // Admin can hide/show
   isFeatured     Boolean       @default(false) // Show on homepage hero/slider
 
-  // Optional Relations with Booking & User
+  // Review enhancements (product blueprint).
+  photos               String[]
+  recommended          Boolean       @default(true)
+  businessResponse     String?       // Professional's reply to this review.
+  businessResponseAt   DateTime?
+
+  // Optional Relations with Booking, User & Professional
   bookingId      String?       @unique
   booking        Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  
+
   userId         String?
   user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  professionalId String?
+  professional   Professional? @relation("ProfessionalTestimonials", fields: [professionalId], references: [id], onDelete: SetNull)
 
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@index([isApproved, isFeatured])
+  @@index([professionalId])
 }
-
-
 
 model ProviderApplication {
   id              String         @id @default(uuid())
@@ -212,10 +282,11 @@ model Booking {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  customer     User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
-  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
-  payment      Payment?
-  testimonial  Testimonial?
+  customer      User            @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  professional  Professional?   @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  payment       Payment?
+  testimonial   Testimonial?
+  conversations Conversation[]
 
   @@index([customerId])
   @@index([professionalId])
@@ -231,10 +302,147 @@ model Payment {
   stripeSessionId       String?       @unique
   stripePaymentIntentId String?
   paidAt                DateTime?
+  // Optional lead-commission revenue split (product blueprint).
+  commissionPence       Int?
+  commissionRate        Float?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([status])
+}
+
+// ------------------------------------------------------------------
+// Quote Requests (customer posts a job, businesses respond with quotes)
+// ------------------------------------------------------------------
+model Quote {
+  id            String      @id @default(uuid())
+  customerId    String
+  trade         String
+  postcode      String
+  city          String
+  description   String
+  budgetInPence Int?
+  preferredDate DateTime?
+  status        QuoteStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  customer  User            @relation("CustomerQuotes", fields: [customerId], references: [id], onDelete: Cascade)
+  responses QuoteResponse[]
+
+  @@index([customerId])
+  @@index([trade])
+  @@index([status])
+}
+
+model QuoteResponse {
+  id             String      @id @default(uuid())
+  quoteId        String
+  professionalId String
+  amountInPence  Int
+  message        String?
+  status         QuoteStatus @default(PENDING) // Accepted/rejected by the customer.
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  quote        Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, professionalId])
+  @@index([professionalId])
+}
+
+// ------------------------------------------------------------------
+// Messaging (private customer <-> business conversations)
+// ------------------------------------------------------------------
+model Conversation {
+  id             String   @id @default(uuid())
+  customerId     String
+  professionalId String
+  bookingId      String?
+  lastMessageAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer     User         @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  messages     Message[]
+
+  @@index([customerId])
+  @@index([professionalId])
+  @@index([bookingId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String?
+  image          String? // Cloudinary image URL.
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+// ------------------------------------------------------------------
+// Notifications
+// ------------------------------------------------------------------
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType @default(GENERAL)
+  title     String
+  body      String?
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+// ------------------------------------------------------------------
+// Subscription Plans (Free / Premium / Featured) + lead commission
+// ------------------------------------------------------------------
+model ProviderSubscription {
+  id             String             @id @default(uuid())
+  professionalId String             @unique
+  plan           SubscriptionPlan   @default(FREE)
+  status         SubscriptionStatus @default(ACTIVE)
+  priceInPence   Int                @default(0)
+  startedAt      DateTime           @default(now())
+  expiresAt      DateTime?
+  isFeatured     Boolean            @default(false)
+  featureStartAt DateTime?
+  featureEndAt   DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------------
+// Customer saved/favourite businesses
+// ------------------------------------------------------------------
+model SavedProfessional {
+  id             String   @id @default(uuid())
+  userId         String
+  professionalId String
+  createdAt      DateTime @default(now())
+
+  user         User         @relation("FavouriteProfessionals", fields: [userId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalId])
+  @@index([professionalId])
 }

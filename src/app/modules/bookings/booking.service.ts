@@ -154,12 +154,18 @@ const getById = async (id: string, requester: { userId: string; role: string }) 
   return booking;
 };
 
-// Covers accept / reject / start / complete / cancel, all through one
-// status transition endpoint so the state machine lives in one place.
+// Covers accept / reject / start / complete / cancel / reschedule, all through
+// one status transition endpoint so the state machine lives in one place.
 const updateStatus = async (
   id: string,
   requester: { userId: string; role: string },
-  data: { status: string; priceInPence?: number; professionalId?: string }
+  data: {
+    status: string;
+    priceInPence?: number;
+    professionalId?: string;
+    bookingDate?: string;
+    timeSlot?: string;
+  }
 ) => {
   const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) {
@@ -195,6 +201,8 @@ const updateStatus = async (
       status: data.status as never,
       ...(data.priceInPence !== undefined ? { priceInPence: data.priceInPence } : {}),
       ...(data.professionalId !== undefined ? { professionalId: data.professionalId } : {}),
+      ...(data.bookingDate !== undefined ? { bookingDate: new Date(data.bookingDate) } : {}),
+      ...(data.timeSlot !== undefined ? { timeSlot: data.timeSlot } : {}),
     },
     include: bookingInclude,
   });

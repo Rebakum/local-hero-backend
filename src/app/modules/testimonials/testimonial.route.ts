@@ -1,27 +1,38 @@
 import { Router } from "express";
 import { TestimonialController } from "./testimonial.controller";
 import authGuard from "../../middlewares/authGuard";
+import optionalAuthGuard from "../../middlewares/optionalAuthGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
 import { TestimonialValidation } from "./testimonial.validation";
 
 const router = Router();
 
-// Public: Get all testimonials
+
 router.get(
   "/",
+  optionalAuthGuard,
   validateRequest(TestimonialValidation.getAllTestimonialsQueryValidation),
   TestimonialController.getAll
 );
 
-// Public: Get single testimonial by ID
+
+// Logged-in user's own testimonials (dashboard edit/delete). Must be
+// registered before "/:id" so it isn't captured by the id param route.
+router.get(
+  "/me",
+  authGuard,
+  TestimonialController.getMyTestimonials
+);
+
+
 router.get(
   "/:id",
   validateRequest(TestimonialValidation.getTestimonialValidation),
   TestimonialController.getById
 );
 
-// Authenticated users can create a testimonial
+
 router.post(
   "/",
   authGuard,
@@ -30,7 +41,7 @@ router.post(
   TestimonialController.create
 );
 
-// User can update THEIR OWN, Admin/Super Admin can update ANY
+
 router.patch(
   "/:id",
   authGuard,
@@ -39,7 +50,7 @@ router.patch(
   TestimonialController.update
 );
 
-// User can delete THEIR OWN, Admin/Super Admin can delete ANY
+
 router.delete(
   "/:id",
   authGuard,

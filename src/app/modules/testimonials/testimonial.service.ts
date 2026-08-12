@@ -125,6 +125,42 @@ const update = async (
   return testimonial;
 };
 
+// The professional whose business the review belongs to can reply publicly.
+const respond = async (
+  id: string,
+  professionalUserId: string,
+  businessResponse: string
+) => {
+  const testimonial = await prisma.testimonial.findUnique({ where: { id } });
+
+  if (!testimonial) {
+    throw new AppError(404, "Testimonial not found");
+  }
+
+  const professional = await prisma.professional.findUnique({
+    where: { userId: professionalUserId },
+  });
+
+  if (!professional) {
+    throw new AppError(404, "You don't have a professional profile yet");
+  }
+
+  if (!testimonial.professionalId || testimonial.professionalId !== professional.id) {
+    throw new AppError(
+      403,
+      "You can only respond to reviews about your own business"
+    );
+  }
+
+  return prisma.testimonial.update({
+    where: { id },
+    data: {
+      businessResponse: businessResponse.trim(),
+      businessResponseAt: new Date(),
+    },
+  });
+};
+
 const deleteTestimonial = async (
   id: string,
   user: { userId: string; role: string }
@@ -149,5 +185,6 @@ export const TestimonialService = {
   getMyTestimonials,
   create,
   update,
+  respond,
   deleteTestimonial,
 };

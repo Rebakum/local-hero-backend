@@ -11,6 +11,9 @@ const createTestimonialValidation = z.object({
     comment: z.string().min(1, "Comment is required"),
     verifiedJob: z.string().min(1, "Verified job is required"),
     avatar: z.string().url("Avatar must be a valid URL").nullable().optional(),
+    photos: z.array(z.string().url("Photo must be a valid URL")).optional(),
+    recommended: z.boolean().optional(),
+    professionalId: z.string().uuid("Invalid professional ID").optional(),
     source: z.string().min(1, "Source is required"),
     sortOrder: z.number().int().optional(),
     bookingId: z.string().uuid("Invalid booking ID").optional(),
@@ -28,6 +31,9 @@ const updateTestimonialValidation = z.object({
     comment: z.string().min(1).optional(),
     verifiedJob: z.string().min(1).optional(),
     avatar: z.string().url().nullable().optional(),
+    photos: z.array(z.string().url("Photo must be a valid URL")).optional(),
+    recommended: z.boolean().optional(),
+    professionalId: z.string().uuid("Invalid professional ID").optional(),
     source: z.string().min(1).optional(),
     sortOrder: z.number().int().optional(),
     isApproved: z.boolean().optional(),
@@ -35,6 +41,15 @@ const updateTestimonialValidation = z.object({
   }),
   params: z.object({
     id: z.string().uuid("Invalid testimonial ID"),
+  }),
+});
+
+const respondToTestimonialValidation = z.object({
+  params: z.object({
+    id: z.string().uuid("Invalid testimonial ID"),
+  }),
+  body: z.object({
+    businessResponse: z.string().min(1, "Response is required").max(2000),
   }),
 });
 
@@ -65,9 +80,14 @@ export type TGetTestimonialsQuery = z.infer<
   typeof getAllTestimonialsQueryValidation
 >["query"];
 
+export type TRespondToTestimonialPayload = z.infer<
+  typeof respondToTestimonialValidation
+>["body"];
+
 export const TestimonialValidation = {
   createTestimonialValidation,
   updateTestimonialValidation,
   getTestimonialValidation,
   getAllTestimonialsQueryValidation,
+  respondToTestimonialValidation,
 };

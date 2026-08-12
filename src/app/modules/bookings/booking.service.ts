@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
+import { resolveTradeRelations } from "../../utils/tradeResolver";
 import { TGetBookingsQuery } from "./booking.validation";
 
 interface ICreateBookingInput {
@@ -47,11 +48,15 @@ const create = async (customerId: string, data: ICreateBookingInput) => {
     }
   }
 
+  const resolved = await resolveTradeRelations(data.trade);
+
   const booking = await prisma.booking.create({
     data: {
       customerId,
       professionalId: data.professionalId,
-      trade: data.trade,
+      tradeId: resolved.tradeId,
+      professionId: resolved.professionId,
+      trade: resolved.trade,
       postcode: data.postcode,
       address: data.address,
       bookingDate: new Date(data.bookingDate),

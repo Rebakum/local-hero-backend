@@ -24,6 +24,17 @@ const config = {
     process.env.CLIENT_URL ||
     "http://localhost:5173",
 
+  // Comma-separated list of allowed browser origins (CORS). Defaults cover
+  // the common local dev ports (3000/3001) plus the Vite default (5173).
+  clientUrls: (
+    process.env.CLIENT_URLS ||
+    process.env.CLIENT_URL ||
+    "http://localhost:3000,http://localhost:3001,http://localhost:5173"
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+
   jwt: {
     secret: process.env.JWT_SECRET,
 

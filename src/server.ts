@@ -1,6 +1,7 @@
 import { Server } from "http";
 import app from "./app";
 import config from "./config";
+import { initSocket } from "./app/socket";
 import { PrismaClient, Role, ApprovalStatus } from "@prisma/client";
 import bcrypt from "bcrypt";
 
@@ -55,7 +56,9 @@ const startServer = async (): Promise<void> => {
     console.log(`Server is running on port ${port}`);
     console.log(`Environment: ${config.nodeEnv}`);
 
-   
+    // Real-time layer (Socket.IO) for instant messaging & notifications.
+    initSocket(server);
+
     await seedSuperAdmin();
   });
 };

@@ -220,38 +220,38 @@ const professionals = [
 
 const beforeAfterProjects = [
   {
-    title: "Victorian Terraced Kitchen Plumbing & Tiling",
+    title: "Kitchen Transformation",
     trade: "Plumber",
     location: "Fulham, London",
     beforeImage: LOCAL_IMAGE_A,
     afterImage: LOCAL_IMAGE_B,
     description:
       "Complete pipework rerouting, brass tapware installation, and Metro subway tile splashback in a 19th-century Fulham property.",
-    cost: "\u00a31,850",
+    cost: "£1,850",
     completionDays: "3 Days",
     sortOrder: 0,
   },
   {
-    title: "Overgrown Garden to Modern Porcelain Terrace",
+    title: "Garden Makeover",
     trade: "Gardener",
     location: "Altrincham, Greater Manchester",
     beforeImage: LOCAL_IMAGE_C,
     afterImage: LOCAL_IMAGE_D,
     description:
       "Cleared 40sqm of overgrown brambles, installed sub-base drainage, laid Grey Italian Porcelain slabs and outdoor LED mood lights.",
-    cost: "\u00a34,200",
+    cost: "£4,200",
     completionDays: "5 Days",
     sortOrder: 1,
   },
   {
-    title: "Period Living Room Alcove Cabinets & Shelving",
+    title: "Alcove Transformation",
     trade: "Carpenter",
     location: "Harborne, Birmingham",
     beforeImage: LOCAL_IMAGE_E,
     afterImage: LOCAL_IMAGE_F,
     description:
       "Handcrafted moisture-resistant MDF twin alcove cupboards with traditional shaker doors and integrated warm LED strip lighting.",
-    cost: "\u00a31,400",
+    cost: "£1,400",
     completionDays: "2 Days",
     sortOrder: 2,
   },
@@ -654,18 +654,93 @@ const trades = [
     sortOrder: 7,
   },
 ];
+
+
+const extraProfessions: Record<string, string[]> = {
+  Plumber: ["Boiler Installer", "Drain Specialist"],
+  Electrician: ["EV Charger Installer", "Home Rewire Specialist"],
+  Cleaner: ["End of Tenancy Cleaner"],
+  Painter: ["Decorator"],
+  Gardener: ["Landscaper", "Tree Surgeon"],
+  Carpenter: ["Kitchen Fitter", "Staircase Specialist"],
+  Locksmith: ["Auto Locksmith"],
+  Roofer: ["Gutter Specialist"],
+};
+
 async function main() {
   console.log("Seeding database...");
 
-  // Clear existing data  
+  // Clear existing data in dependency order (FK-safe).
+  await prisma.message.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.quoteResponse.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.booking.deleteMany();
+  await prisma.providerApplication.deleteMany();
+  await prisma.savedProfessional.deleteMany();
+  await prisma.providerSubscription.deleteMany();
   await prisma.testimonial.deleteMany();
   await prisma.beforeAfterProject.deleteMany();
-  await prisma.trade.deleteMany();
+  await prisma.faq.deleteMany();
   await prisma.professional.deleteMany();
+  await prisma.profession.deleteMany();
+  await prisma.trade.deleteMany();
 
-  // Seed professionals
+  // Seed trades + professions (Trade -> Profession).
+  const tradeIdsByCategory: Record<string, string> = {};
+
+  for (const trade of trades) {
+    const created = await prisma.trade.create({ data: trade });
+    tradeIdsByCategory[created.category] = created.id;
+
+    // Default profession: same name as the trade.
+    await prisma.profession.create({
+      data: {
+        tradeId: created.id,
+        name: created.category,
+        description: created.subtitle ?? `${created.category} services`,
+        isActive: true,
+        sortOrder: 0,
+      },
+    });
+
+    // Extra sub-professions.
+    for (const [index, professionName] of (extraProfessions[created.category] ?? []).entries()) {
+      await prisma.profession.create({
+        data: {
+          tradeId: created.id,
+          name: professionName,
+          description: `${professionName} services under ${created.category}`,
+          isActive: true,
+          sortOrder: index + 1,
+        },
+      });
+    }
+  }
+  console.log(`Seeded ${trades.length} trades + professions`);
+
+  // Seed professionals (linked to the default profession of their trade).
+  const professionalIdByTrade: Record<string, string> = {};
+
   for (const pro of professionals) {
-    await prisma.professional.create({ data: pro });
+    const tradeId = tradeIdsByCategory[pro.trade];
+    const defaultProfession = await prisma.profession.findFirst({
+      where: { tradeId, name: pro.trade },
+    });
+
+    const created = await prisma.professional.create({
+      data: {
+        ...pro,
+        // Every seeded pro is DBS-checked and insured (see their verifiedStatus).
+        isVerified: true,
+        tradeId,
+        professionId: defaultProfession!.id,
+      },
+    });
+
+    professionalIdByTrade[created.trade] = created.id;
   }
   console.log(`Seeded ${professionals.length} professionals`);
 
@@ -675,18 +750,23 @@ async function main() {
   }
   console.log(`Seeded ${beforeAfterProjects.length} before/after projects`);
 
-  // Seed testimonials
+  // Seed testimonials (linked to the professional of the matching trade so
+  // reviews can appear on the professional's profile).
   for (const testimonial of testimonials) {
-    await prisma.testimonial.create({ data: testimonial });
+    await prisma.testimonial.create({
+      data: {
+        ...testimonial,
+        professionalId: professionalIdByTrade[testimonial.trade] ?? null,
+      },
+    });
   }
   console.log(`Seeded ${testimonials.length} testimonials`);
 
- 
-  // Seed trades
-  for (const trade of trades) {
-    await prisma.trade.create({ data: trade });
+  // Seed FAQs
+  for (const faq of faqs) {
+    await prisma.faq.create({ data: faq });
   }
-  console.log(`Seeded ${trades.length} trades`);
+  console.log(`Seeded ${faqs.length} FAQs`);
 
   console.log("Seeding completed!");
 }

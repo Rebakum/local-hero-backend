@@ -2,9 +2,13 @@ import { z } from "zod";
 
 export interface IProfessional {
   id: string;
+  userId: string | null;
+  tradeId: string;
+  professionId: string;
   name: string;
   trade: string;
   companyName: string;
+  companyLogo: string | null;
   avatar: string | null;
   rating: number;
   reviewCount: number;
@@ -21,6 +25,13 @@ export interface IProfessional {
   badgeText: string | null;
   isFeatured: boolean;
   sortOrder: number;
+  workingHours: Record<string, unknown> | null;
+  certifications: string[];
+  insuranceInfo: string | null;
+  serviceAreas: string[];
+  yearsOfExperience: number | null;
+  isVerified: boolean;
+  isEmergency: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +50,7 @@ export const CreateProfessionalValidation = z.object({
     name: z.string().min(1, "Name is required"),
     trade: z.string().min(1, "Trade is required"),
     companyName: z.string().min(1, "Company name is required"),
+    companyLogo: z.string().nullable().optional(),
     avatar: z.string().url("Avatar must be a valid URL").nullable().optional(),
     rating: z.number().min(0).max(5).optional(),
     reviewCount: z.number().int().min(0).optional(),
@@ -55,6 +67,16 @@ export const CreateProfessionalValidation = z.object({
     badgeText: z.string().nullable().optional(),
     isFeatured: z.boolean().optional(),
     sortOrder: z.number().int().optional(),
+    userId: z.string().uuid("Invalid user ID").nullable().optional(),
+    tradeId: z.string().uuid("Invalid trade ID").optional(),
+    professionId: z.string().uuid("Invalid profession ID").optional(),
+    workingHours: z.record(z.unknown()).nullable().optional(),
+    certifications: z.array(z.string()).optional(),
+    insuranceInfo: z.string().nullable().optional(),
+    serviceAreas: z.array(z.string()).optional(),
+    yearsOfExperience: z.number().int().min(0).optional(),
+    isVerified: z.boolean().optional(),
+    isEmergency: z.boolean().optional(),
   }),
 });
 
@@ -63,6 +85,7 @@ export const UpdateProfessionalValidation = z.object({
     name: z.string().min(1).optional(),
     trade: z.string().min(1).optional(),
     companyName: z.string().min(1).optional(),
+    companyLogo: z.string().nullable().optional(),
     avatar: z.string().url().optional(),
     rating: z.number().min(0).max(5).optional(),
     reviewCount: z.number().int().min(0).optional(),
@@ -79,6 +102,16 @@ export const UpdateProfessionalValidation = z.object({
     badgeText: z.string().nullable().optional(),
     isFeatured: z.boolean().optional(),
     sortOrder: z.number().int().optional(),
+    userId: z.string().uuid("Invalid user ID").nullable().optional(),
+    tradeId: z.string().uuid("Invalid trade ID").optional(),
+    professionId: z.string().uuid("Invalid profession ID").optional(),
+    workingHours: z.record(z.unknown()).nullable().optional(),
+    certifications: z.array(z.string()).optional(),
+    insuranceInfo: z.string().nullable().optional(),
+    serviceAreas: z.array(z.string()).optional(),
+    yearsOfExperience: z.number().int().min(0).optional(),
+    isVerified: z.boolean().optional(),
+    isEmergency: z.boolean().optional(),
   }),
   params: z.object({
     id: z.string().uuid("Invalid professional ID"),

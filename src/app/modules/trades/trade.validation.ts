@@ -22,8 +22,9 @@ const createTradeValidation = z.object({
     activeProsCount: z.number().int().min(0).optional(),
     popularTasks: z.array(z.string()).optional(),
     badge: z.string().nullable().optional(),
-    featuredService: featuredServiceSchema, // Strongly Typed Validation
+    featuredService: featuredServiceSchema.nullable().optional(),
     sortOrder: z.number().int().optional(),
+    isActive: z.boolean().optional(),
   }),
 });
 
@@ -37,8 +38,9 @@ const updateTradeValidation = z.object({
     activeProsCount: z.number().int().min(0).optional(),
     popularTasks: z.array(z.string()).optional(),
     badge: z.string().nullable().optional(),
-    featuredService: featuredServiceSchema.partial().optional(), // Optional fields inside updating
+    featuredService: featuredServiceSchema.partial().nullable().optional(), // Optional fields inside updating
     sortOrder: z.number().int().optional(),
+    isActive: z.boolean().optional(),
   }),
   params: z.object({
     id: z.string().uuid("Invalid trade ID"), // MongoDB হলে z.string().min(1) বা regex ব্যবহার করুন
@@ -56,7 +58,17 @@ const getAllTradesQueryValidation = z.object({
     page: z.string().optional(),
     limit: z.string().optional(),
     search: z.string().trim().optional(),
-    sortBy: z.string().trim().optional(),
+    category: z.string().trim().optional(),
+    sortBy: z
+      .enum([
+        "featured",
+        "name-asc",
+        "name-desc",
+        "popular",
+        "price-asc",
+        "price-desc",
+      ])
+      .optional(),
   }),
 });
 

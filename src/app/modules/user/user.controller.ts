@@ -7,7 +7,13 @@ import { IGetAllUsersQuery } from "./user.interface";
 const getProfile = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
   if (!userId) {
-    sendResponse(res, 401, "User not authenticated", null);
+    if (req.authTokenPresent) {
+      // Token supplied but invalid/expired — signal the client to refresh.
+      sendResponse(res, 401, "User not authenticated", null);
+    } else {
+      // No session at all — anonymous visitor, not an error.
+      sendResponse(res, 200, "No active session", null);
+    }
     return;
   }
   const result = await UserService.getProfile(userId);

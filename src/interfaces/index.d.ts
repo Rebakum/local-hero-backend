@@ -8,6 +8,9 @@ declare global {
         email: string;
         role: Role;
       };
+      // Set by softAuthGuard: true when an access token was supplied but was
+      // invalid/expired, false when no token was provided at all.
+      authTokenPresent?: boolean;
     }
   }
 }

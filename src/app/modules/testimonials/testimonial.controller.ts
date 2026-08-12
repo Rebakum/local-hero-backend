@@ -48,6 +48,18 @@ const update = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Testimonial updated successfully", result);
 });
 
+const respond = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { businessResponse } = req.body as { businessResponse: string };
+  const result = await TestimonialService.respond(
+    id,
+    req.user!.userId,
+    businessResponse
+  );
+
+  sendResponse(res, 200, "Response submitted successfully", result);
+});
+
 const deleteTestimonial = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
@@ -62,5 +74,6 @@ export const TestimonialController = {
   getMyTestimonials,
   create,
   update,
+  respond,
   deleteTestimonial,
 };

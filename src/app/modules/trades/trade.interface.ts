@@ -8,8 +8,9 @@ export interface ITrade {
   activeProsCount: number;
   popularTasks: string[];
   badge: string | null;
-  featuredService: Record<string, unknown>;
+  featuredService: Record<string, unknown> | null;
   sortOrder: number;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
+import { resolveTradeRelations } from "../../utils/tradeResolver";
 import { IGetAllProfessionalsQuery } from "./professional.interface";
 
 const getAll = async (query: IGetAllProfessionalsQuery) => {
@@ -57,8 +58,17 @@ const getById = async (id: string) => {
 };
 
 const create = async (data: Record<string, unknown>) => {
+  const { tradeId, professionId, trade } = await resolveTradeRelations(
+    data.trade as string
+  );
+
   const professional = await prisma.professional.create({
-    data: data as any,
+    data: {
+      ...(data as any),
+      tradeId,
+      professionId,
+      trade,
+    },
   });
 
   return professional;
@@ -71,9 +81,22 @@ const update = async (id: string, data: Record<string, unknown>) => {
     throw new AppError(404, "Professional not found");
   }
 
+  const payload = { ...(data as any) };
+
+  if (payload.trade) {
+    const resolved = await resolveTradeRelations(payload.trade);
+    payload.tradeId = resolved.tradeId;
+    payload.professionId = resolved.professionId;
+    payload.trade = resolved.trade;
+  } else {
+    // Keep the existing relations when the trade string is not being changed.
+    delete payload.tradeId;
+    delete payload.professionId;
+  }
+
   const professional = await prisma.professional.update({
     where: { id },
-    data: data as any,
+    data: payload,
   });
 
   return professional;

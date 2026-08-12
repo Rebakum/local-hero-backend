@@ -1,0 +1,89 @@
+import prisma from "../../../config/prisma";
+import AppError from "../../utils/AppError";
+import { emitToUser } from "../../socket";
+
+interface ICreateNotificationInput {
+  userId: string;
+  type: string;
+  title: string;
+  body?: string;
+  data?: Record<string, unknown>;
+}
+
+const create = async (input: ICreateNotificationInput) => {
+  const notification = await prisma.notification.create({
+    data: {
+      userId: input.userId,
+      type: input.type as never,
+      title: input.title,
+      body: input.body,
+      data: (input.data as never) ?? undefined,
+    },
+  });
+
+  // Push the notification to the user's open tabs in real time.
+  emitToUser(input.userId, "notification:new", notification);
+
+  return notification;
+};
+
+const getMyNotifications = async (
+  userId: string,
+  query: { page?: string; limit?: string; unread?: string }
+) => {
+  const page = Math.max(parseInt(query.page || "1", 10), 1);
+  const limit = Math.min(Math.max(parseInt(query.limit || "20", 10), 1), 100);
+  const skip = (page - 1) * limit;
+
+  const where: Record<string, unknown> = { userId };
+
+  if (query.unread === "true") {
+    where.isRead = false;
+  }
+
+  const [notifications, total] = await Promise.all([
+    prisma.notification.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.notification.count({ where }),
+  ]);
+
+  return {
+    notifications,
+    meta: { page, limit, total, totalPage: Math.ceil(total / limit) },
+  };
+};
+
+const markAsRead = async (id: string, userId: string) => {
+  const notification = await prisma.notification.findUnique({ where: { id } });
+
+  if (!notification) {
+    throw new AppError(404, "Notification not found");
+  }
+
+  if (notification.userId !== userId) {
+    throw new AppError(403, "You can only update your own notifications");
+  }
+
+  return prisma.notification.update({
+    where: { id },
+    data: { isRead: true },
+  });
+};
+
+const markAllAsRead = async (userId: string) => {
+  return prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true },
+  });
+};
+
+export const NotificationService = {
+  create,
+  getMyNotifications,
+  markAsRead,
+  markAllAsRead,
+};

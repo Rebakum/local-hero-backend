@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
+import { resolveTradeRelations } from "../../utils/tradeResolver";
 import { TGetProviderApplicationsQuery } from "./provider-application.validation";
 
 const create = async (userId: string, data: Record<string, unknown>) => {
@@ -24,11 +25,16 @@ const create = async (userId: string, data: Record<string, unknown>) => {
     throw new AppError(409, "You already have a pending provider application");
   }
 
+  const resolved = await resolveTradeRelations(data.trade as string);
+
   const application = await prisma.providerApplication.create({
     data: {
       userId,
-      trade: data.trade as string,
+      tradeId: resolved.tradeId,
+      professionId: resolved.professionId,
+      trade: resolved.trade,
       companyName: data.companyName as string,
+      companyLogo: (data.companyLogo as string) || null,
       bio: data.bio as string,
       hourlyRate: data.hourlyRate as number,
       location: data.location as string,
@@ -74,9 +80,21 @@ const updateMyApplication = async (
     throw new AppError(400, "You can only update pending applications");
   }
 
+  const payload = { ...(data as any) };
+
+  if (payload.trade) {
+    const resolved = await resolveTradeRelations(payload.trade);
+    payload.tradeId = resolved.tradeId;
+    payload.professionId = resolved.professionId;
+    payload.trade = resolved.trade;
+  } else {
+    delete payload.tradeId;
+    delete payload.professionId;
+  }
+
   const updated = await prisma.providerApplication.update({
     where: { id: applicationId },
-    data: data as any,
+    data: payload,
   });
 
   return updated;
@@ -203,6 +221,8 @@ const approve = async (id: string, reviewerId: string) => {
     // not a duplicate-constraint error.
     const professionalData = {
       name: applicant.name,
+      tradeId: application.tradeId,
+      professionId: application.professionId,
       trade: application.trade,
       companyName: application.companyName,
       avatar: application.avatar,

@@ -14,7 +14,14 @@ const app: Application = express();
 
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+      // Allow requests without an Origin header (curl, Postman, server-to-server).
+      if (!origin || config.clientUrls.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} is not allowed by CORS`));
+      }
+    },
     credentials: true,
   })
 );

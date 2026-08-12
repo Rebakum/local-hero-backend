@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { UserController } from "./user.controller";
 import authGuard from "../../middlewares/authGuard";
+import softAuthGuard from "../../middlewares/softAuthGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
 import { UserValidation } from "./user.validation";
 
 const router = Router();
 
-router.get("/me", authGuard, UserController.getProfile);
+router.get("/me", softAuthGuard, UserController.getProfile);
 
 router.patch(
   "/me",

@@ -1,8 +1,11 @@
 export interface IProviderApplication {
   id: string;
   userId: string;
+  tradeId: string;
+  professionId: string;
   trade: string;
   companyName: string;
+  companyLogo: string | null;
   bio: string;
   hourlyRate: number;
   location: string;

@@ -51,6 +51,16 @@ router.patch(
 );
 
 
+// Professional replies publicly to a review left on their business.
+router.patch(
+  "/:id/respond",
+  authGuard,
+  roleGuard("serviceProvider"),
+  validateRequest(TestimonialValidation.respondToTestimonialValidation),
+  TestimonialController.respond
+);
+
+
 router.delete(
   "/:id",
   authGuard,

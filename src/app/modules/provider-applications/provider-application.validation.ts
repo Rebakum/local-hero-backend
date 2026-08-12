@@ -4,6 +4,7 @@ const createProviderApplicationValidation = z.object({
   body: z.object({
     trade: z.string().min(1, "Trade is required"),
     companyName: z.string().min(1, "Company name is required"),
+    companyLogo: z.string().nullable().optional(),
     bio: z.string().min(1, "Bio is required"),
     hourlyRate: z.number().int().min(1, "Hourly rate must be at least 1"),
     location: z.string().min(1, "Location is required"),
@@ -25,6 +26,7 @@ const updateProviderApplicationValidation = z.object({
   body: z.object({
     trade: z.string().min(1).optional(),
     companyName: z.string().min(1).optional(),
+    companyLogo: z.string().nullable().optional(),
     bio: z.string().min(1).optional(),
     hourlyRate: z.number().int().min(1).optional(),
     location: z.string().min(1).optional(),

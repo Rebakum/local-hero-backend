@@ -58,14 +58,10 @@ app.get("/", (_req, res) => {
   });
 });
 
-/**
- * 404
- */
+
 app.use(notFound);
 
-/**
- * Global Error Handler
- */
+
 app.use(globalErrorHandler);
 
 export default app;

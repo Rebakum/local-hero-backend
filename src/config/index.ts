@@ -5,9 +5,9 @@ dotenv.config({
   path: path.resolve(__dirname, "../../.env"),
 });
 
-if (!process.env.JWT_SECRET) {
+if (!process.env.ENVIRONMENT_VARIABLE_JWT_SECRET) {
   throw new Error(
-    "JWT_SECRET environment variable is required"
+    "ENVIRONMENT_VARIABLE_JWT_SECRET environment variable is required"
   );
 }
 
@@ -24,8 +24,7 @@ const config = {
     process.env.CLIENT_URL ||
     "http://localhost:5173",
 
-  // Comma-separated list of allowed browser origins (CORS). Defaults cover
-  // the common local dev ports (3000/3001) plus the Vite default (5173).
+
   clientUrls: (
     process.env.CLIENT_URLS ||
     process.env.CLIENT_URL ||
@@ -36,19 +35,19 @@ const config = {
     .filter(Boolean),
 
   jwt: {
-    secret: process.env.JWT_SECRET,
+    secret: process.env.ENVIRONMENT_VARIABLE_JWT_SECRET,
 
     accessExpiresIn:
-      process.env.JWT_ACCESS_EXPIRES_IN ||
+      process.env.ENVIRONMENT_VARIABLE_JWT_ACCESS_EXPIRES_IN ||
       "15m",
 
     refreshExpiresIn:
-      process.env.JWT_REFRESH_EXPIRES_IN ||
+      process.env.ENVIRONMENT_VARIABLE_JWT_REFRESH_EXPIRES_IN ||
       "30d",
   },
 
   bcryptSaltRounds: parseInt(
-    process.env.BCRYPT_SALT_ROUNDS || "12",
+    process.env.ENVIRONMENT_VARIABLE_BCRYPT_SALT_ROUNDS || "12",
     10
   ),
 
@@ -57,21 +56,39 @@ const config = {
 
   cloudinary: {
     cloudName:
-      process.env.CLOUDINARY_CLOUD_NAME || "",
+      process.env.ENVIRONMENT_VARIABLE_CLOUDINARY_CLOUD_NAME || "",
 
     apiKey:
-      process.env.CLOUDINARY_API_KEY || "",
+      process.env.ENVIRONMENT_VARIABLE_CLOUDINARY_API_KEY || "",
 
     apiSecret:
-      process.env.CLOUDINARY_API_SECRET || "",
+      process.env.ENVIRONMENT_VARIABLE_CLOUDINARY_API_SECRET || "",
   },
 
   stripe: {
     secretKey:
-      process.env.STRIPE_SECRET_KEY || "",
+      process.env.ENVIRONMENT_VARIABLE_STRIPE_SECRET_KEY || "",
 
     webhookSecret:
-      process.env.STRIPE_WEBHOOK_SECRET || "",
+      process.env.ENVIRONMENT_VARIABLE_STRIPE_WEBHOOK_SECRET || "",
+  },
+
+
+  smtp: {
+    host: process.env.ENVIRONMENT_VARIABLE_SMTP_HOST || "",
+    port: parseInt(process.env.ENVIRONMENT_VARIABLE_SMTP_PORT || "465", 10),
+    secure: (process.env.ENVIRONMENT_VARIABLE_SMTP_SECURE || "true") === "true",
+    user: process.env.ENVIRONMENT_VARIABLE_SMTP_USER || "",
+    pass: process.env.ENVIRONMENT_VARIABLE_SMTP_PASS || "",
+    from: process.env.ENVIRONMENT_VARIABLE_SMTP_FROM || "LocalHero <noreply@localhero.com>",
+  },
+
+  emailVerification: {
+    // How long a verification link stays valid.
+    expiresInMinutes: parseInt(
+      process.env.ENVIRONMENT_VARIABLE_EMAIL_VERIFY_EXPIRES_IN_MINUTES || "30",
+      10
+    ),
   },
 };
 

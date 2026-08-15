@@ -3,6 +3,103 @@ import prisma from "../../../config/prisma";
 import stripe from "../../../config/stripe";
 import config from "../../../config";
 import AppError from "../../utils/AppError";
+import { sendTransactionalEmail } from "../../utils/email";
+import { NotificationService } from "../notifications/notification.service";
+
+const formatGBP = (pence: number) =>
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
+
+// Notify the customer (and the provider on success) about a payment event.
+const notifyPaymentStatus = async (
+  bookingId: string,
+  status: "success" | "failed" | "refunded"
+) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      customer: { select: { name: true, email: true } },
+      professional: {
+        select: { userId: true, name: true },
+      },
+    },
+  });
+  if (!booking) return;
+
+  const amount = booking.priceInPence ? ` of ${formatGBP(booking.priceInPence)}` : "";
+  const amountInPence = booking.priceInPence ?? undefined;
+
+  if (status === "success") {
+    void NotificationService.create({
+      userId: booking.customerId,
+      type: "PAYMENT_SUCCESS",
+      title: "Payment successful",
+      body: `Your payment${amount} for the ${booking.trade} booking went through.`,
+      data: { bookingId },
+    }).catch(() => undefined);
+
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("PAYMENT_SUCCESS_CUSTOMER", booking.customer.email, {
+        customerName: booking.customer.name,
+        trade: booking.trade,
+        amountInPence,
+      });
+    }
+
+    if (booking.professional?.userId) {
+      void NotificationService.create({
+        userId: booking.professional.userId,
+        type: "PAYMENT_SUCCESS",
+        title: "Payment received",
+        body: `You received a payment${amount} for the ${booking.trade} booking.`,
+        data: { bookingId },
+      }).catch(() => undefined);
+
+      const providerUser = await prisma.user.findUnique({
+        where: { id: booking.professional.userId },
+        select: { email: true, name: true },
+      });
+      if (providerUser?.email) {
+        void sendTransactionalEmail("PAYMENT_SUCCESS_PROVIDER", providerUser.email, {
+          professionalName: providerUser.name,
+          trade: booking.trade,
+          amountInPence,
+        });
+      }
+    }
+  } else if (status === "failed") {
+    void NotificationService.create({
+      userId: booking.customerId,
+      type: "PAYMENT_FAILED",
+      title: "Payment failed",
+      body: `Your payment${amount} for the ${booking.trade} booking could not be completed.`,
+      data: { bookingId },
+    }).catch(() => undefined);
+
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("PAYMENT_FAILED", booking.customer.email, {
+        customerName: booking.customer.name,
+        trade: booking.trade,
+        amountInPence,
+      });
+    }
+  } else {
+    void NotificationService.create({
+      userId: booking.customerId,
+      type: "PAYMENT_REFUNDED",
+      title: "Refund issued",
+      body: `Your payment${amount} for the ${booking.trade} booking has been refunded.`,
+      data: { bookingId },
+    }).catch(() => undefined);
+
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("REFUND_ISSUED", booking.customer.email, {
+        customerName: booking.customer.name,
+        trade: booking.trade,
+        amountInPence,
+      });
+    }
+  }
+};
 
 const createCheckoutSession = async (
   bookingId: string,
@@ -395,6 +492,76 @@ const markPaymentFailed = async (
 };
 
 /**
+ * Refund a booking's payment (admin/super-admin).
+ *
+ * Creates a Stripe refund against the original PaymentIntent, marks the
+ * payment REFUNDED, notifies the customer, and emails a refund receipt.
+ */
+const refundBooking = async (
+  bookingId: string,
+  adminId: string
+) => {
+  const payment = await prisma.payment.findUnique({
+    where: { bookingId },
+    include: {
+      booking: {
+        select: {
+          id: true,
+          customerId: true,
+          trade: true,
+          priceInPence: true,
+          fullName: true,
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new AppError(404, "Payment not found for this booking");
+  }
+
+  if (payment.status !== "PAID") {
+    throw new AppError(
+      400,
+      `Only paid bookings can be refunded (current status: ${payment.status})`
+    );
+  }
+
+  if (!payment.stripePaymentIntentId) {
+    throw new AppError(400, "This payment has no Stripe PaymentIntent to refund");
+  }
+
+  try {
+    await stripe.refunds.create({
+      payment_intent: payment.stripePaymentIntentId,
+      metadata: { bookingId, adminId },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Stripe refund failed";
+    throw new AppError(502, `Stripe refund failed: ${message}`);
+  }
+
+  const refunded = await prisma.payment.update({
+    where: { id: payment.id },
+    data: { status: "REFUNDED" },
+  });
+
+  // In-app + email to the customer.
+  await notifyPaymentStatus(bookingId, "refunded");
+
+  // Critical operational event -> all admins.
+  void NotificationService.notifyAdmins({
+    type: "PAYMENT_REFUNDED",
+    title: "Refund issued",
+    body: `${payment.booking.fullName} was refunded ${formatGBP(payment.amountInPence)} for their ${payment.booking.trade} booking.`,
+    data: { bookingId },
+  }).catch(() => undefined);
+
+  return refunded;
+};
+
+/**
  * Stripe webhook
  */
 const handleWebhookEvent = async (
@@ -523,6 +690,8 @@ const handleWebhookEvent = async (
         `Payment marked PAID for booking ${bookingId}`
       );
 
+      void notifyPaymentStatus(bookingId, "success");
+
       break;
     }
 
@@ -597,6 +766,8 @@ const handleWebhookEvent = async (
         `PaymentIntent marked PAID for booking ${bookingId}`
       );
 
+      void notifyPaymentStatus(bookingId, "success");
+
       break;
     }
 
@@ -622,6 +793,8 @@ const handleWebhookEvent = async (
         `Payment marked FAILED for booking ${bookingId}`
       );
 
+      void notifyPaymentStatus(bookingId, "failed");
+
       break;
     }
 
@@ -642,6 +815,8 @@ const handleWebhookEvent = async (
       }
 
       await markPaymentFailed(bookingId);
+
+      void notifyPaymentStatus(bookingId, "failed");
 
       break;
     }
@@ -696,6 +871,14 @@ const handleWebhookEvent = async (
         },
       });
 
+      const refundedPayment = await prisma.payment.findFirst({
+        where: { stripePaymentIntentId: paymentIntentId },
+      });
+
+      if (refundedPayment) {
+        void notifyPaymentStatus(refundedPayment.bookingId, "refunded");
+      }
+
       break;
     }
 
@@ -715,5 +898,6 @@ export const PaymentService = {
   getPaymentByBooking,
   getAllPayments,
   getPaymentStats,
+  refundBooking,
   handleWebhookEvent,
 };

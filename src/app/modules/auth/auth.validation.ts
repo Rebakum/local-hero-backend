@@ -57,6 +57,12 @@ const logoutValidation = z.object({
   body: z.object({}),
 });
 
+const resendVerificationValidation = z.object({
+  body: z.object({
+    email: z.string().trim().toLowerCase().email("Invalid email address"),
+  }),
+});
+
 export type TRegisterPayload = z.infer<typeof registerValidation>["body"];
 export type TLoginPayload = z.infer<typeof loginValidation>["body"];
 export type TRefreshTokenPayload = z.infer<typeof refreshTokenValidation>;
@@ -70,4 +76,5 @@ export const AuthValidation = {
   forgetPasswordValidation,
   resetPasswordValidation,
   logoutValidation,
+  resendVerificationValidation,
 };

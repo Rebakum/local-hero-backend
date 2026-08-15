@@ -29,14 +29,29 @@ export interface ILogoutPayload {
   refreshToken?: string;
 }
 
+export interface IVerifyEmailPayload {
+  token: string;
+}
+
+export interface IResendVerificationPayload {
+  email: string;
+}
+
+export interface IAuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  approvalStatus: string;
+  emailVerified: boolean;
+}
+
 export interface IAuthResponse {
   accessToken: string;
   refreshToken: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: Role;
-    approvalStatus: string;
-  };
+  user: IAuthUser;
+}
+
+export interface IRegisterResponse {
+  user: IAuthUser;
 }

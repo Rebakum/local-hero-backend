@@ -31,26 +31,16 @@ const cookieOptions = {
 };
 
 const register = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthService.register(
-    req.body,
-    req.headers["user-agent"],
-    req.ip
+  // Registration deliberately does NOT create a session or set auth cookies:
+  // the account is unusable until the email address has been verified.
+  const result = await AuthService.register(req.body);
+
+  sendResponse(
+    res,
+    201,
+    "Account created. Please verify your email address before logging in.",
+    result
   );
-
-  res.cookie("accessToken", result.accessToken, {
-    ...cookieOptions,
-    maxAge: parseExpirationToMs(config.jwt.accessExpiresIn),
-  });
-
-  res.cookie("refreshToken", result.refreshToken, {
-    ...cookieOptions,
-    maxAge: parseExpirationToMs(config.jwt.refreshExpiresIn),
-  });
-
-  sendResponse(res, 201, "User registered successfully", {
-    user: result.user,
-    accessToken: result.accessToken,
-  });
 });
 
 const login = catchAsync(async (req: Request, res: Response) => {
@@ -74,6 +64,32 @@ const login = catchAsync(async (req: Request, res: Response) => {
     user: result.user,
     accessToken: result.accessToken,
   });
+});
+
+const verifyEmail = catchAsync(async (req: Request, res: Response) => {
+  const token = req.query.token as string | undefined;
+
+  if (!token) {
+    sendResponse(res, 400, "Verification token is required", null);
+    return;
+  }
+
+  const user = await AuthService.verifyEmail({ token });
+
+  sendResponse(res, 200, "Email verified successfully. You can now log in.", {
+    user,
+  });
+});
+
+const resendVerification = catchAsync(async (req: Request, res: Response) => {
+  await AuthService.resendVerificationEmail(req.body);
+
+  sendResponse(
+    res,
+    200,
+    "If your email matches an unverified account, a new verification link has been sent.",
+    null
+  );
 });
 
 const refreshToken = catchAsync(async (req: Request, res: Response) => {
@@ -162,4 +178,6 @@ export const AuthController = {
   forgetPassword,
   resetPassword,
   logout,
+  verifyEmail,
+  resendVerification,
 };

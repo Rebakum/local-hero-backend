@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
+import { NotificationService } from "../notifications/notification.service";
 import { IGetAllUsersQuery } from "./admin.interface";
 
 const userSelect = {
@@ -76,6 +77,13 @@ const approveUser = async (userId: string) => {
     select: userSelect,
   });
 
+  void NotificationService.create({
+    userId,
+    type: "ACCOUNT_UPDATED",
+    title: "Account approved",
+    body: "Your account has been approved. You can now use LocalHero.",
+  }).catch(() => undefined);
+
   return updated;
 };
 
@@ -101,6 +109,13 @@ const rejectUser = async (userId: string) => {
     },
     select: userSelect,
   });
+
+  void NotificationService.create({
+    userId,
+    type: "ACCOUNT_UPDATED",
+    title: "Account update",
+    body: "Your account status has been updated by an administrator.",
+  }).catch(() => undefined);
 
   return updated;
 };

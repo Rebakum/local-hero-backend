@@ -34,6 +34,14 @@ router.post(
   AuthController.resetPassword
 );
 
+router.get("/verify-email", AuthController.verifyEmail);
+
+router.post(
+  "/resend-verification",
+  validateRequest(AuthValidation.resendVerificationValidation),
+  AuthController.resendVerification
+);
+
 router.post("/logout", authGuard, AuthController.logout);
 
 export const AuthRoutes = router;

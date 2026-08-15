@@ -1,7 +1,18 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
 import { resolveTradeRelations } from "../../utils/tradeResolver";
+import { sendTransactionalEmail } from "../../utils/email";
+import { NotificationService } from "../notifications/notification.service";
 import { TGetProviderApplicationsQuery } from "./provider-application.validation";
+
+// Fetch emails of every ADMIN / SUPER_ADMIN account.
+const getAdminEmails = async (): Promise<string[]> => {
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+    select: { email: true },
+  });
+  return admins.map((a) => a.email);
+};
 
 const create = async (userId: string, data: Record<string, unknown>) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -46,6 +57,24 @@ const create = async (userId: string, data: Record<string, unknown>) => {
       portfolioImages: (data.portfolioImages as string[]) || [],
     },
   });
+
+  // New provider application -> all admins.
+  void NotificationService.notifyAdmins({
+    type: "PROVIDER_APPLICATION_SUBMITTED",
+    title: "New provider application",
+    body: `${data.companyName as string} applied to become a ${data.trade as string} provider.`,
+    data: { applicationId: application.id },
+  }).catch(() => undefined);
+
+  // New provider application -> email all admins (critical operational event).
+  const adminEmails = await getAdminEmails();
+  for (const adminEmail of adminEmails) {
+    void sendTransactionalEmail("PROVIDER_APPLICATION_SUBMITTED", adminEmail, {
+      adminName: "Admin",
+      companyName: data.companyName as string,
+      trade: data.trade as string,
+    });
+  }
 
   return application;
 };
@@ -259,6 +288,23 @@ const approve = async (id: string, reviewerId: string) => {
     return { application: updatedApplication, professional };
   });
 
+  // Application approved -> notify the applicant.
+  void NotificationService.create({
+    userId: application.userId,
+    type: "PROVIDER_APPLICATION_APPROVED",
+    title: "Provider application approved",
+    body: "Congratulations! Your business is now live on LocalHero.",
+    data: { applicationId: id },
+  }).catch(() => undefined);
+
+  // Application approved -> email the applicant.
+  if (applicant.email) {
+    void sendTransactionalEmail("PROVIDER_APPROVED", applicant.email, {
+      name: applicant.name,
+      trade: application.trade,
+    });
+  }
+
   return result;
 };
 
@@ -284,6 +330,28 @@ const reject = async (id: string, reviewerId: string, rejectionReason: string) =
       reviewedAt: new Date(),
     },
   });
+
+  // Application rejected -> notify the applicant.
+  void NotificationService.create({
+    userId: application.userId,
+    type: "PROVIDER_APPLICATION_REJECTED",
+    title: "Provider application rejected",
+    body: rejectionReason || "Your provider application was not approved.",
+    data: { applicationId: id },
+  }).catch(() => undefined);
+
+  // Application rejected -> email the applicant.
+  const applicant = await prisma.user.findUnique({
+    where: { id: application.userId },
+    select: { email: true, name: true },
+  });
+  if (applicant?.email) {
+    void sendTransactionalEmail("PROVIDER_REJECTED", applicant.email, {
+      name: applicant.name,
+      trade: application.trade,
+      reason: rejectionReason,
+    });
+  }
 
   return updated;
 };

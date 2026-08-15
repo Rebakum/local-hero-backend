@@ -13,8 +13,8 @@ let server: Server;
 // Super Admin Auto-Create Function
 const seedSuperAdmin = async (): Promise<void> => {
   try {
-    const adminEmail = process.env.SUPER_ADMIN_EMAIL;
-    const adminPassword = process.env.SUPER_ADMIN_PASSWORD;
+    const adminEmail = process.env.ENVIRONMENT_VARIABLE_SUPER_ADMIN_EMAIL;
+    const adminPassword = process.env.ENVIRONMENT_VARIABLE_SUPER_ADMIN_PASSWORD;
 
     if (!adminEmail || !adminPassword) {
       console.log("⚠️ SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD missing in .env");

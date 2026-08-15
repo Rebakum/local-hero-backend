@@ -5,6 +5,10 @@ import prisma from "../../../config/prisma";
 import config from "../../../config";
 import AppError from "../../utils/AppError";
 import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from "../../utils/email";
+import {
   IRegisterPayload,
   ILoginPayload,
   IRefreshTokenPayload,
@@ -12,8 +16,12 @@ import {
   IResetPasswordPayload,
   ILogoutPayload,
   IAuthResponse,
+  IRegisterResponse,
+  IVerifyEmailPayload,
+  IResendVerificationPayload,
 } from "./auth.interface";
 import { Role } from "@prisma/client";
+import { NotificationService } from "../notifications/notification.service";
 
 const generateTokens = (user: { id: string; email: string; role: Role }) => {
   const accessToken = jwt.sign(
@@ -45,11 +53,35 @@ const parseExpirationToMs = (expiresIn: string): number => {
   return value * multipliers[unit];
 };
 
+const hashToken = (token: string): string =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+const generateVerificationToken = (): string =>
+  crypto.randomBytes(32).toString("hex");
+
+const issueVerification = async (userId: string): Promise<string> => {
+  const verificationToken = generateVerificationToken();
+
+  const verificationExpiresAt = new Date(
+    Date.now() + config.emailVerification.expiresInMinutes * 60 * 1000
+  );
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      verificationToken: hashToken(verificationToken),
+      verificationExpiresAt,
+    },
+  });
+
+  return verificationToken;
+};
+
 const register = async (
   payload: IRegisterPayload,
-  userAgent?: string,
-  ipAddress?: string
-): Promise<IAuthResponse> => {
+  _userAgent?: string,
+  _ipAddress?: string
+): Promise<IRegisterResponse> => {
   const existingUser = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -69,33 +101,39 @@ const register = async (
       email: payload.email,
       password: hashedPassword,
       phone: payload.phone,
+      emailVerified: false,
     },
   });
 
-  const { accessToken, refreshToken } = generateTokens(user);
+  // Save a hashed verification token + expiry, then email the link.
+  const verificationToken = await issueVerification(user.id);
 
-  const expiresAt = new Date();
-  expiresAt.setTime(expiresAt.getTime() + parseExpirationToMs(config.jwt.refreshExpiresIn));
+  // A failed send must never roll back the account. Log it so the user can
+  // request a new link via the resend endpoint.
+  void sendVerificationEmail(
+    user.email,
+    user.name,
+    verificationToken
+  ).catch((error) =>
+    console.error("[Auth] Failed to send verification email:", error)
+  );
 
-  await prisma.session.create({
-    data: {
-      userId: user.id,
-      refreshToken,
-      userAgent,
-      ipAddress,
-      expiresAt,
-    },
-  });
+  // Welcome notification (IN_APP + bell).
+  void NotificationService.create({
+    userId: user.id,
+    type: "WELCOME",
+    title: "Welcome to LocalHero",
+    body: `Thanks for joining, ${user.name}. Verify your email to start posting jobs and getting quotes from vetted local pros.`,
+  }).catch(() => undefined);
 
   return {
-    accessToken,
-    refreshToken,
     user: {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
       approvalStatus: user.approvalStatus,
+      emailVerified: false,
     },
   };
 };
@@ -122,6 +160,13 @@ const login = async (
     throw new AppError(401, "Invalid email or password");
   }
 
+  if (!user.emailVerified) {
+    throw new AppError(
+      403,
+      "Please verify your email address before logging in. Check your inbox for the verification link we sent you."
+    );
+  }
+
   const { accessToken, refreshToken } = generateTokens(user);
 
   const expiresAt = new Date();
@@ -146,6 +191,7 @@ const login = async (
       email: user.email,
       role: user.role,
       approvalStatus: user.approvalStatus,
+      emailVerified: true,
     },
   };
 };
@@ -217,6 +263,7 @@ const getMe = async (userId: string) => {
       phone: true,
       avatar: true,
       approvalStatus: true,
+      emailVerified: true,
       category: true,
       experienceYears: true,
       serviceDetails: true,
@@ -232,9 +279,67 @@ const getMe = async (userId: string) => {
   return user;
 };
 
+const verifyEmail = async (
+  payload: IVerifyEmailPayload
+): Promise<IRegisterResponse["user"]> => {
+  const user = await prisma.user.findFirst({
+    where: {
+      verificationToken: hashToken(payload.token),
+      verificationExpiresAt: { gt: new Date() },
+    },
+  });
+
+  if (!user) {
+    throw new AppError(
+      400,
+      "Invalid or expired verification link. Please request a new one."
+    );
+  }
+
+  const verified = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      verificationToken: null,
+      verificationExpiresAt: null,
+    },
+  });
+
+  return {
+    id: verified.id,
+    name: verified.name,
+    email: verified.email,
+    role: verified.role,
+    approvalStatus: verified.approvalStatus,
+    emailVerified: true,
+  };
+};
+
+const resendVerificationEmail = async (
+  payload: IResendVerificationPayload
+): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { email: payload.email },
+  });
+
+  // Always respond generically so the endpoint can't be used to probe
+  // which emails have an account.
+  if (!user || user.emailVerified) {
+    return;
+  }
+
+  const verificationToken = await issueVerification(user.id);
+
+  await sendVerificationEmail(
+    user.email,
+    user.name,
+    verificationToken
+  );
+};
+
 const forgetPassword = async (
   payload: IForgetPasswordPayload
-): Promise<{ token: string }> => {
+): Promise<{ token?: string }> => {
   const user = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -257,6 +362,17 @@ const forgetPassword = async (
       resetPasswordExpiresAt,
     },
   });
+
+  void sendPasswordResetEmail(user.email, user.name, resetToken).catch(
+    (error) =>
+      console.error("[Auth] Failed to send password reset email:", error)
+  );
+
+  // In development only, return the token so the flow can be exercised
+  // without a real inbox. Never expose it in production.
+  if (config.nodeEnv === "production") {
+    return {};
+  }
 
   return { token: resetToken };
 };
@@ -332,4 +448,6 @@ export const AuthService = {
   forgetPassword,
   resetPassword,
   logout,
+  verifyEmail,
+  resendVerificationEmail,
 };

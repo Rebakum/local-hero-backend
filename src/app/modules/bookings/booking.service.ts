@@ -1,6 +1,8 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
 import { resolveTradeRelations } from "../../utils/tradeResolver";
+import { sendTransactionalEmail, sendBookingCompletedReviewEmail } from "../../utils/email";
+import { NotificationService } from "../notifications/notification.service";
 import { TGetBookingsQuery } from "./booking.validation";
 
 interface ICreateBookingInput {
@@ -27,6 +29,7 @@ const bookingInclude = {
       trade: true,
       avatar: true,
       hourlyRate: true,
+      userId: true,
     },
   },
   customer: {
@@ -35,17 +38,35 @@ const bookingInclude = {
   payment: true,
 } as const;
 
+// Resolve the user account behind a professional profile, if any.
+const getProfessionalUserId = async (professionalId: string | null) => {
+  if (!professionalId) return null;
+  const professional = await prisma.professional.findUnique({
+    where: { id: professionalId },
+    select: { userId: true },
+  });
+  return professional?.userId ?? null;
+};
+
 // A customer books a service. If they picked a specific professional, we
 // attach them right away; otherwise it stays unassigned until an admin (or
 // the provider themselves, in a future iteration) picks it up.
 const create = async (customerId: string, data: ICreateBookingInput) => {
+  let assignedProUser: { userId: string | null; email?: string; name?: string } | null = null;
+
   if (data.professionalId) {
     const professional = await prisma.professional.findUnique({
       where: { id: data.professionalId },
+      include: { user: { select: { email: true, name: true } } },
     });
     if (!professional) {
       throw new AppError(404, "Selected professional not found");
     }
+    assignedProUser = {
+      userId: professional.userId,
+      email: professional.user?.email,
+      name: professional.user?.name,
+    };
   }
 
   const resolved = await resolveTradeRelations(data.trade);
@@ -70,6 +91,32 @@ const create = async (customerId: string, data: ICreateBookingInput) => {
     },
     include: bookingInclude,
   });
+
+  // New booking request -> assigned provider.
+  if (data.professionalId) {
+    const proUserId = assignedProUser?.userId;
+    if (proUserId) {
+      void NotificationService.create({
+        userId: proUserId,
+        type: "BOOKING_REQUEST",
+        title: "New booking request",
+        body: `New ${resolved.trade} booking request from ${data.fullName} in ${data.postcode}.`,
+        data: { bookingId: booking.id },
+      }).catch(() => undefined);
+    }
+
+    if (assignedProUser?.email) {
+      void sendTransactionalEmail("BOOKING_REQUEST", assignedProUser.email, {
+        professionalName: assignedProUser.name,
+        trade: resolved.trade,
+        customerName: data.fullName,
+        postcode: data.postcode,
+        bookingDate: booking.bookingDate.toDateString(),
+        timeSlot: data.timeSlot,
+        description: data.description,
+      });
+    }
+  }
 
   return booking;
 };
@@ -177,6 +224,8 @@ const updateStatus = async (
     throw new AppError(404, "Booking not found");
   }
 
+  const previousStatus = booking.status;
+
   const isAdmin = requester.role === "ADMIN" || requester.role === "SUPER_ADMIN";
   const isOwner = booking.customerId === requester.userId;
 
@@ -212,23 +261,197 @@ const updateStatus = async (
     include: bookingInclude,
   });
 
+  // Notify the other party about the status change.
+  await notifyStatusChange(
+    updated,
+    data.status,
+    {
+      requesterId: requester.userId,
+      customerId: updated.customerId,
+      proUserId: updated.professional?.userId ?? null,
+      previousStatus,
+    }
+  );
+
   return updated;
 };
 
-const assignProfessional = async (id: string, professionalId: string) => {
+// Notify the relevant user whenever a booking's status changes:
+//   ACCEPTED/REJECTED/IN_PROGRESS/COMPLETED -> customer
+//   CANCELLED                            -> the OTHER party
+const notifyStatusChange = async (
+  booking: {
+    id: string;
+    trade: string;
+    customerId: string;
+    customer: { name: string; email: string } | null;
+    professionalId: string | null;
+    professional: { userId: string | null; name: string | null } | null;
+    priceInPence?: number | null;
+    bookingDate?: Date | null;
+    timeSlot?: string | null;
+  },
+  status: string,
+  ctx: {
+    requesterId: string;
+    customerId: string;
+    proUserId: string | null;
+    previousStatus: string;
+  }
+) => {
+  const proUserId = ctx.proUserId ?? (await getProfessionalUserId(booking.professionalId));
+
+  // Duplicate protection: a no-op status update (e.g. COMPLETED -> COMPLETED)
+  // must not re-fire notifications or emails.
+  if (status === ctx.previousStatus) return;
+
+  const map: Record<string, { type: string; title: string; body: string; recipient: "customer" | "provider" }> = {
+    ACCEPTED: {
+      type: "BOOKING_CONFIRMATION",
+      title: "Booking accepted",
+      body: `Your ${booking.trade} booking has been accepted.`,
+      recipient: "customer",
+    },
+    REJECTED: {
+      type: "BOOKING_REJECTED",
+      title: "Booking rejected",
+      body: `Your ${booking.trade} booking request was not accepted.`,
+      recipient: "customer",
+    },
+    IN_PROGRESS: {
+      type: "BOOKING_IN_PROGRESS",
+      title: "Work in progress",
+      body: `The professional has started your ${booking.trade} job.`,
+      recipient: "customer",
+    },
+    COMPLETED: {
+      type: "BOOKING_COMPLETED",
+      title: "Your service has been completed 🎉",
+      body: "Your LocalHero service has been successfully completed. We would love to hear about your experience. Please take a moment to leave your valuable review and rating.",
+      recipient: "customer",
+    },
+    CANCELLED: {
+      type: "BOOKING_CANCELLED",
+      title: "Booking cancelled",
+      body: `A ${booking.trade} booking has been cancelled.`,
+      recipient: ctx.requesterId === ctx.customerId ? "provider" : "customer",
+    },
+  };
+
+  const spec = map[status];
+  if (!spec) return;
+
+  const userId =
+    spec.recipient === "customer" ? booking.customerId : proUserId;
+
+  if (userId) {
+    void NotificationService.create({
+      userId,
+      type: spec.type,
+      title: spec.title,
+      body: spec.body,
+      data:
+        status === "COMPLETED"
+          ? { bookingId: booking.id, action: "LEAVE_REVIEW" }
+          : { bookingId: booking.id },
+    }).catch(() => undefined);
+  }
+
+  // Transactional email for the affected party.
+  const emailFields = {
+    trade: booking.trade,
+    bookingDate: booking.bookingDate ? booking.bookingDate.toDateString() : "",
+    timeSlot: booking.timeSlot ?? "",
+    priceInPence: booking.priceInPence ?? undefined,
+  };
+
+  if (status === "ACCEPTED") {
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("BOOKING_CONFIRMED", booking.customer.email, {
+        customerName: booking.customer.name,
+        ...emailFields,
+      });
+    }
+  } else if (status === "REJECTED") {
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("BOOKING_REJECTED", booking.customer.email, {
+        customerName: booking.customer.name,
+        ...emailFields,
+      });
+    }
+  } else if (status === "IN_PROGRESS") {
+    if (booking.customer?.email) {
+      void sendTransactionalEmail("BOOKING_IN_PROGRESS", booking.customer.email, {
+        customerName: booking.customer.name,
+        ...emailFields,
+      });
+    }
+  } else if (status === "COMPLETED") {
+    if (booking.customer?.email) {
+      void sendBookingCompletedReviewEmail(
+        booking.customer.email,
+        booking.customer.name,
+        booking.id,
+        booking.trade
+      );
+    }
+  } else if (status === "CANCELLED") {
+    if (spec.recipient === "customer") {
+      if (booking.customer?.email) {
+        void sendTransactionalEmail("BOOKING_CANCELLED", booking.customer.email, {
+          name: booking.customer.name,
+          role: "customer",
+          ...emailFields,
+        });
+      }
+    } else if (proUserId) {
+      const providerUser = await prisma.user.findUnique({
+        where: { id: proUserId },
+        select: { email: true, name: true },
+      });
+      if (providerUser?.email) {
+        void sendTransactionalEmail("BOOKING_CANCELLED", providerUser.email, {
+          name: providerUser.name,
+          role: "provider",
+          ...emailFields,
+        });
+      }
+    }
+  }
+};
+
+const assignProfessional = async (id: string, professionalId: string, adminId: string) => {
   const [booking, professional] = await Promise.all([
     prisma.booking.findUnique({ where: { id } }),
-    prisma.professional.findUnique({ where: { id: professionalId } }),
+    prisma.professional.findUnique({
+      where: { id: professionalId },
+      select: { id: true, userId: true },
+    }),
   ]);
 
   if (!booking) throw new AppError(404, "Booking not found");
   if (!professional) throw new AppError(404, "Professional not found");
 
-  return prisma.booking.update({
+  const updated = await prisma.booking.update({
     where: { id },
     data: { professionalId, status: "ACCEPTED" },
     include: bookingInclude,
   });
+
+  // Assignment accepts the booking -> the customer gets the same
+  // confirmation notification + email as a normal ACCEPTED transition.
+  await notifyStatusChange(
+    updated,
+    "ACCEPTED",
+    {
+      requesterId: adminId,
+      customerId: updated.customerId,
+      proUserId: professional.userId,
+      previousStatus: booking.status,
+    }
+  );
+
+  return updated;
 };
 
 export const BookingService = {

@@ -17,6 +17,7 @@ const userSelect = {
   phone: true,
   avatar: true,
   approvalStatus: true,
+  emailVerified: true,
   category: true,
   experienceYears: true,
   serviceDetails: true,

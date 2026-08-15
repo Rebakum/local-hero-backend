@@ -27,6 +27,20 @@ const create = async (input: ICreateNotificationInput) => {
   return notification;
 };
 
+// Notify every ADMIN / SUPER_ADMIN account (e.g. new provider applications).
+const notifyAdmins = async (
+  input: Omit<ICreateNotificationInput, "userId">
+) => {
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    admins.map((admin) => create({ ...input, userId: admin.id }))
+  );
+};
+
 const getMyNotifications = async (
   userId: string,
   query: { page?: string; limit?: string; unread?: string }
@@ -81,9 +95,17 @@ const markAllAsRead = async (userId: string) => {
   });
 };
 
+const getUnreadCount = async (userId: string) => {
+  return prisma.notification.count({
+    where: { userId, isRead: false },
+  });
+};
+
 export const NotificationService = {
   create,
+  notifyAdmins,
   getMyNotifications,
   markAsRead,
   markAllAsRead,
+  getUnreadCount,
 };

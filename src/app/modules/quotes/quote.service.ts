@@ -1,6 +1,7 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
 import { resolveTradeRelations } from "../../utils/tradeResolver";
+import { sendTransactionalEmail } from "../../utils/email";
 import { NotificationService } from "../notifications/notification.service";
 import { TCreateQuotePayload } from "./quote.validation";
 
@@ -67,6 +68,41 @@ const createQuote = async (customerId: string, data: TCreateQuotePayload) => {
       preferredDate: data.preferredDate ? new Date(data.preferredDate) : undefined,
     },
     include: quoteInclude,
+  }).then(async (quote) => {
+    // New lead -> notify + email providers matching this trade so they can quote.
+    const providers = await prisma.professional.findMany({
+      where: { tradeId, userId: { not: null } },
+      select: { userId: true },
+    });
+    await Promise.all(
+      providers
+        .map((p) => p.userId)
+        .filter((id): id is string => !!id)
+        .map(async (userId) => {
+          void NotificationService.create({
+            userId,
+            type: "NEW_QUOTE",
+            title: "New lead available",
+            body: `A new ${trade} job in ${data.city} needs a quote.`,
+            data: { quoteId: quote.id },
+          }).catch(() => undefined);
+
+          const proUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { email: true, name: true },
+          });
+          if (proUser?.email) {
+            void sendTransactionalEmail("NEW_LEAD", proUser.email, {
+              professionalName: proUser.name,
+              trade,
+              city: data.city,
+              postcode: data.postcode,
+              description: data.description,
+            });
+          }
+        })
+    );
+    return quote;
   });
 };
 
@@ -188,6 +224,21 @@ const respondToQuote = async (
     data: { quoteId, responseId: response.id },
   });
 
+  const customerUser = await prisma.user.findUnique({
+    where: { id: quote.customerId },
+    select: { email: true, name: true },
+  });
+
+  if (customerUser?.email) {
+    void sendTransactionalEmail("QUOTE_RESPONSE", customerUser.email, {
+      customerName: customerUser.name,
+      trade: quote.trade,
+      professionalName: response.professional.companyName || response.professional.name,
+      amountInPence: data.amountInPence,
+      message: data.message,
+    });
+  }
+
   return response;
 };
 
@@ -275,6 +326,18 @@ const updateResponseStatus = async (
         body: "The customer accepted your quotation and a booking was created.",
         data: { quoteId, responseId },
       });
+
+      const proUser = await prisma.user.findUnique({
+        where: { id: professional.userId },
+        select: { email: true, name: true },
+      });
+      if (proUser?.email) {
+        void sendTransactionalEmail("QUOTE_ACCEPTED", proUser.email, {
+          professionalName: proUser.name,
+          trade: quote.trade,
+          amountInPence: response.amountInPence,
+        });
+      }
     }
   } else {
     await prisma.quoteResponse.update({

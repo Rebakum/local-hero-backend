@@ -17,7 +17,16 @@ const getPaymentValidation = z.object({
   }),
 });
 
+const refundPaymentValidation = z.object({
+  params: z.object({
+    bookingId: z.string().uuid(
+      "Invalid booking ID"
+    ),
+  }),
+});
+
 export const PaymentValidation = {
   createCheckoutSessionValidation,
   getPaymentValidation,
+  refundPaymentValidation,
 };

@@ -42,7 +42,11 @@ const updateStatus = catchAsync(async (req: Request, res: Response) => {
 const assignProfessional = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const { professionalId } = req.body;
-  const result = await BookingService.assignProfessional(id, professionalId);
+  const result = await BookingService.assignProfessional(
+    id,
+    professionalId,
+    req.user!.userId
+  );
   sendResponse(res, 200, "Professional assigned to booking successfully", result);
 });
 

@@ -59,4 +59,18 @@ router.get(
   PaymentController.getPaymentByBooking
 );
 
+/**
+ * Admin & Super Admin
+ * Refund a booking's payment
+ */
+router.post(
+  "/:bookingId/refund",
+  authGuard,
+  roleGuard("ADMIN", "SUPER_ADMIN"),
+  validateRequest(
+    PaymentValidation.refundPaymentValidation
+  ),
+  PaymentController.refund
+);
+
 export const PaymentRoutes = router;

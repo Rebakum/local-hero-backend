@@ -75,6 +75,22 @@ const getPaymentStats = catchAsync(
   }
 );
 
+const refund = catchAsync(async (req: Request, res: Response) => {
+  const { bookingId } = req.params;
+
+  const result = await PaymentService.refundBooking(
+    bookingId,
+    req.user!.userId
+  );
+
+  sendResponse(
+    res,
+    200,
+    "Payment refunded successfully",
+    result
+  );
+});
+
 const webhook = catchAsync(
   async (req: Request, res: Response) => {
     const signature =
@@ -116,5 +132,6 @@ export const PaymentController = {
   getPaymentByBooking,
   getAllPayments,
   getPaymentStats,
+  refund,
   webhook,
 };

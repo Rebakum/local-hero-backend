@@ -56,10 +56,23 @@ enum NotificationType {
   BOOKING_CONFIRMATION
   BOOKING_REMINDER
   BOOKING_CANCELLED
+  BOOKING_REJECTED
+  BOOKING_IN_PROGRESS
+  BOOKING_COMPLETED
   NEW_REVIEW
+  REVIEW_REQUESTED
   NEW_MESSAGE
   PAYMENT_SUCCESS
   PAYMENT_FAILED
+  PAYMENT_REFUNDED
+  PROVIDER_APPLICATION_SUBMITTED
+  PROVIDER_APPLICATION_APPROVED
+  PROVIDER_APPLICATION_REJECTED
+  LEAD_ACCEPTED
+  WELCOME
+  ACCOUNT_UPDATED
+  ANNOUNCEMENT
+  PASSWORD_CHANGED
   GENERAL
 }
 
@@ -101,6 +114,10 @@ model User {
   category               String?
   experienceYears        Int?
   serviceDetails         String?
+
+  emailVerified          Boolean      @default(false)
+  verificationToken      String?
+  verificationExpiresAt  DateTime?
 
   resetPasswordToken     String?
   resetPasswordExpiresAt DateTime?

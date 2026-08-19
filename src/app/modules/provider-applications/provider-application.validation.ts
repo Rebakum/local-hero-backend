@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const createProviderApplicationValidation = z.object({
   body: z.object({
-    trade: z.string().min(1, "Trade is required"),
+    tradeId: z.string().uuid("Valid trade ID is required"),
+    professionId: z.string().uuid("Valid profession ID is required"),
     companyName: z.string().min(1, "Company name is required"),
     companyLogo: z.string().nullable().optional(),
     bio: z.string().min(1, "Bio is required"),
@@ -17,14 +18,15 @@ const createProviderApplicationValidation = z.object({
       .int()
       .min(0, "Experience years must be non-negative"),
     phone: z.string().min(1, "Phone number is required"),
-    avatar: z.string().url("Avatar must be a valid URL").nullable().optional(),
+    avatar: z.string().url("A valid profile image is required"),
     portfolioImages: z.array(z.string()).optional(),
   }),
 });
 
 const updateProviderApplicationValidation = z.object({
   body: z.object({
-    trade: z.string().min(1).optional(),
+    tradeId: z.string().uuid("Valid trade ID is required").optional(),
+    professionId: z.string().uuid("Valid profession ID is required").optional(),
     companyName: z.string().min(1).optional(),
     companyLogo: z.string().nullable().optional(),
     bio: z.string().min(1).optional(),

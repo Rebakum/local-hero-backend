@@ -165,6 +165,8 @@ export type TransactionalEmailType =
   | "PROVIDER_APPLICATION_SUBMITTED"
   | "NEW_REVIEW"
   | "REVIEW_RESPONSE"
+  | "REVIEW_HIDDEN"
+  | "REVIEW_RESTORED"
   | "PASSWORD_RESET";
 
 // Per-type subject + body. Receives only the fields each module has on hand.
@@ -472,6 +474,40 @@ const templates: Record<
       },
     }),
   }),
+  REVIEW_HIDDEN: (d) => ({
+    subject: "Your LocalHero review has been hidden",
+    html: emailShell({
+      title: "Update on your review",
+      paragraphs: [
+        `Hi ${firstName(d.authorName)}`,
+        "We've removed one of your reviews from public view because it didn't meet our platform guidelines.",
+        d.note
+          ? `Reason provided: ${d.note}`
+          : "Our moderation team reviewed the content and it was found to be in breach of our guidelines.",
+        "You can still see this review in your dashboard, and if you think this was a mistake or have any questions, please get in touch with our support team.",
+      ],
+      cta: {
+        label: "Contact support",
+        url: `${config.clientUrl}/contact`,
+      },
+      note: "We're always happy to review a decision — our team is here to help.",
+    }),
+  }),
+  REVIEW_RESTORED: (d) => ({
+    subject: "Your LocalHero review is visible again",
+    html: emailShell({
+      title: "Your review is back",
+      paragraphs: [
+        `Hi ${firstName(d.authorName)}`,
+        "Good news — your review has been restored and is visible on the platform again.",
+        "Thank you for being a valued part of the LocalHero community.",
+      ],
+      cta: {
+        label: "View my reviews",
+        url: `${config.clientUrl}/dashboard/user/reviews`,
+      },
+    }),
+  }),
   PASSWORD_RESET: (d) => ({
     subject: "Reset your LocalHero password",
     html: emailShell({
@@ -553,7 +589,7 @@ const sendVerificationEmail = async (
   name: string,
   token: string
 ): Promise<void> => {
-  const verifyUrl = `${config.clientUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  const verifyUrl = `${config.clientUrl}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(to)}`;
   await send(
     to,
     "Verify your LocalHero email",
@@ -565,7 +601,7 @@ const sendVerificationEmail = async (
         "Please verify your email address by clicking the button below.",
       ],
       cta: { label: "Verify Email", url: verifyUrl },
-      note: `This link expires in ${config.emailVerification.expiresInMinutes} minutes. If you didn't create this account, you can safely ignore this email.`,
+      note: "This link expires in 1 hour. If you didn't create this account, you can safely ignore this email.",
     })
   );
 };

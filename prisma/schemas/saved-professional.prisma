@@ -1,0 +1,16 @@
+
+model SavedProfessional {
+  id              String       @id @default(uuid())
+
+  userId          String
+  professionalId  String
+
+  createdAt       DateTime     @default(now())
+
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  user            User         @relation("FavouriteProfessionals", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalId])
+  @@index([professionalId])
+}

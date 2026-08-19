@@ -1,0 +1,66 @@
+// ============================================================
+// BOOKING
+// ============================================================
+
+model Booking {
+  id              String        @id @default(uuid())
+
+  customerId      String
+
+  professionalId  String?
+
+  tradeId         String
+  professionId    String
+
+  // Snapshot
+  trade           String
+
+  postcode        String
+  address         String
+
+  bookingDate     DateTime
+  timeSlot        String
+
+  urgency         String        @default("Standard")
+
+  description     String
+
+  fullName        String
+  email           String
+  phone           String
+
+  notes           String?
+
+  status          BookingStatus  @default(PENDING)
+
+  priceInPence    Int?
+
+  quoteResponseId String?       @unique
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customer        User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+
+  profession      Profession    @relation(fields: [professionId], references: [id])
+
+  professional    Professional? @relation(fields: [professionalId], references: [id])
+
+  quoteResponse   QuoteResponse? @relation(fields: [quoteResponseId], references: [id])
+
+  tradeRef        Trade         @relation(fields: [tradeId], references: [id])
+
+  conversations   Conversation[]
+
+  payment         Payment?
+
+  testimonial     Testimonial?
+
+  @@index([customerId])
+  @@index([professionalId])
+  @@index([tradeId])
+  @@index([professionId])
+  @@index([tradeId, professionId])
+  @@index([status])
+  @@index([bookingDate])
+}

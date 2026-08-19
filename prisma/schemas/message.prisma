@@ -1,0 +1,22 @@
+
+model Message {
+  id             String       @id @default(uuid())
+
+  conversationId String
+  senderId       String
+
+  body           String?
+  image          String?
+
+  isRead         Boolean      @default(false)
+
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}

@@ -1,0 +1,22 @@
+
+model BeforeAfterProject {
+  id              String   @id @default(uuid())
+
+  title           String
+  trade           String
+  location        String
+
+  beforeImage     String?
+  afterImage      String?
+
+  description     String
+  cost            String
+  completionDays  String
+
+  sortOrder       Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([trade])
+}

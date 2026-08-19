@@ -34,7 +34,8 @@ router.post(
   AuthController.resetPassword
 );
 
-router.get("/verify-email", AuthController.verifyEmail);
+router.get("/verify-email", AuthController.validateEmailVerification);
+router.post("/verify-email", AuthController.verifyEmail);
 
 router.post(
   "/resend-verification",

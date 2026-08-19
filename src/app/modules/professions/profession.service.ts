@@ -124,6 +124,22 @@ const deleteProfession = async (id: string) => {
     throw new AppError(404, "Profession not found");
   }
 
+  const [professionalCount, bookingCount, quoteCount, applicationCount] = await Promise.all([
+    prisma.professional.count({ where: { professionId: id } }),
+    prisma.booking.count({ where: { professionId: id } }),
+    prisma.quote.count({ where: { professionId: id } }),
+    prisma.providerApplication.count({ where: { professionId: id } }),
+  ]);
+
+  const linkedCount = professionalCount + bookingCount + quoteCount + applicationCount;
+
+  if (linkedCount > 0) {
+    throw new AppError(
+      409,
+      `Cannot delete this profession — ${professionalCount} professional(s), ${bookingCount} booking(s), ${quoteCount} quote(s), and ${applicationCount} provider application(s) are still linked to it. Remove or reassign them first.`
+    );
+  }
+
   await prisma.profession.delete({ where: { id } });
 };
 

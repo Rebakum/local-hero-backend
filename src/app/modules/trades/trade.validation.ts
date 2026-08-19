@@ -1,28 +1,17 @@
 import { z } from "zod";
 
-// Featured Service Child Schema for Strict Type Safety
-const featuredServiceSchema = z.object({
-  title: z.string().min(1, "Service title is required"),
-  image: z.string().url("Invalid image URL").or(z.string().min(1)),
-  description: z.string().optional(),
-  estimatedPrice: z.string().optional(),
-  timeEstimate: z.string().optional(),
-  popularFor: z.array(z.string()).optional(),
-  included: z.array(z.string()).optional(),
-  isEmergency: z.boolean().optional(),
-});
-
 const createTradeValidation = z.object({
   body: z.object({
-    category: z.string().min(1, "Category is required"),
-    subtitle: z.string().optional(),
-    iconName: z.string().min(1, "Icon name is required"),
-    description: z.string().min(1, "Description is required"),
-    avgHourlyRate: z.string().min(1, "Average hourly rate is required"),
-    activeProsCount: z.number().int().min(0).optional(),
-    popularTasks: z.array(z.string()).optional(),
-    badge: z.string().nullable().optional(),
-    featuredService: featuredServiceSchema.nullable().optional(),
+    category: z.string().trim().min(1, "Category is required"),
+    subtitle: z.string().trim().nullable().optional(),
+    iconUrl: z.string().trim().nullable().optional(),
+    description: z.string().trim().min(1, "Description is required"),
+    avgHourlyRate: z.string().trim().min(1, "Average hourly rate is required"),
+    startingPrice: z.string().trim().nullable().optional(),
+    popularTasks: z
+      .array(z.string().trim().min(1))
+      .min(1, "At least one popular task is required"),
+    badge: z.string().trim().nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),
   }),
@@ -30,20 +19,19 @@ const createTradeValidation = z.object({
 
 const updateTradeValidation = z.object({
   body: z.object({
-    category: z.string().min(1).optional(),
-    subtitle: z.string().optional(),
-    iconName: z.string().min(1).optional(),
-    description: z.string().min(1).optional(),
-    avgHourlyRate: z.string().min(1).optional(),
-    activeProsCount: z.number().int().min(0).optional(),
-    popularTasks: z.array(z.string()).optional(),
-    badge: z.string().nullable().optional(),
-    featuredService: featuredServiceSchema.partial().nullable().optional(), // Optional fields inside updating
+    category: z.string().trim().min(1, "Category is required").optional(),
+    subtitle: z.string().trim().nullable().optional(),
+    iconUrl: z.string().trim().nullable().optional(),
+    description: z.string().trim().min(1, "Description is required").optional(),
+    avgHourlyRate: z.string().trim().min(1, "Average hourly rate is required").optional(),
+    startingPrice: z.string().trim().nullable().optional(),
+    popularTasks: z.array(z.string().trim().min(1)).optional(),
+    badge: z.string().trim().nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),
   }),
   params: z.object({
-    id: z.string().uuid("Invalid trade ID"), // MongoDB হলে z.string().min(1) বা regex ব্যবহার করুন
+    id: z.string().uuid("Invalid trade ID"),
   }),
 });
 

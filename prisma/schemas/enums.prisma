@@ -1,0 +1,96 @@
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  user
+  serviceProvider
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum QuoteStatus {
+  PENDING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum NotificationType {
+  NEW_QUOTE
+  QUOTE_RESPONSE
+
+  BOOKING_REQUEST
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLED
+  BOOKING_REJECTED
+  BOOKING_IN_PROGRESS
+  BOOKING_COMPLETED
+
+  NEW_REVIEW
+  REVIEW_REQUESTED
+  REVIEW_HIDDEN
+  REVIEW_RESTORED
+
+  NEW_MESSAGE
+
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  PAYMENT_REFUNDED
+
+  PROVIDER_APPLICATION_SUBMITTED
+  PROVIDER_APPLICATION_APPROVED
+  PROVIDER_APPLICATION_REJECTED
+
+  LEAD_ACCEPTED
+
+  WELCOME
+  ACCOUNT_UPDATED
+  ANNOUNCEMENT
+  PASSWORD_CHANGED
+
+  GENERAL
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  FEATURED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}

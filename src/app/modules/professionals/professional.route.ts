@@ -4,7 +4,6 @@ import authGuard from "../../middlewares/authGuard";
 import roleGuard from "../../middlewares/roleGuard";
 import validateRequest from "../../middlewares/validateRequest";
 import {
-  CreateProfessionalValidation,
   UpdateProfessionalValidation,
   GetProfessionalValidation,
 } from "./professional.interface";
@@ -21,16 +20,7 @@ router.get(
   ProfessionalController.getById
 );
 
-// 3. Create Professional
-router.post(
-  "/",
-  authGuard,
-  roleGuard("ADMIN", "SUPER_ADMIN"),
-  validateRequest(CreateProfessionalValidation),
-  ProfessionalController.create
-);
-
-// 4. Update Professional
+// 3. Update Professional
 router.patch(
   "/:id",
   authGuard,

@@ -20,12 +20,9 @@ export const resolveTradeRelations = async (trade: string) => {
     tradeRecord = await prisma.trade.create({
       data: {
         category,
-        iconName: "Wrench",
         description: `${category} services`,
         avgHourlyRate: "£40/hr",
         popularTasks: [],
-        activeProsCount: 0,
-        featuredService: {},
         isActive: true,
         sortOrder: 999,
       },

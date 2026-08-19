@@ -1,0 +1,29 @@
+
+model Payment {
+  id                    String        @id @default(uuid())
+
+  bookingId             String        @unique
+
+  amountInPence         Int
+
+  currency              String        @default("gbp")
+
+  status                PaymentStatus @default(PENDING)
+
+  stripeSessionId       String?       @unique
+
+  stripePaymentIntentId String?
+
+  paidAt                DateTime?
+
+  commissionPence       Int?
+
+  commissionRate        Float?
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  booking               Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}

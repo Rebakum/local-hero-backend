@@ -1,0 +1,59 @@
+
+model ProviderApplication {
+  id              String         @id @default(uuid())
+
+  userId          String
+
+  tradeId         String
+  professionId    String
+
+  // Snapshot of selected Trade name
+  trade           String
+
+  companyName     String
+  companyLogo     String?
+
+  bio             String
+
+  hourlyRate      Int
+
+  location        String
+  postcodeArea    String
+
+  specialties     String[]
+
+  experienceYears Int
+
+  phone           String
+
+  avatar          String?
+
+  portfolioImages String[]
+
+  status          ApprovalStatus @default(PENDING)
+
+  rejectionReason String?
+
+  reviewedBy      String?
+  reviewedAt      DateTime?
+
+  professionalId  String?        @unique
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  profession      Profession     @relation(fields: [professionId], references: [id])
+
+  tradeRef        Trade          @relation(fields: [tradeId], references: [id])
+
+  professional    Professional?  @relation(fields: [professionalId], references: [id])
+
+  reviewer        User?          @relation("ReviewedApplications", fields: [reviewedBy], references: [id])
+
+  user            User           @relation("UserApplications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tradeId])
+  @@index([professionId])
+  @@index([status])
+}

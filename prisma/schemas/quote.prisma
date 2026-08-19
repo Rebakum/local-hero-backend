@@ -1,0 +1,43 @@
+
+model Quote {
+  id             String        @id @default(uuid())
+
+  customerId     String
+
+  tradeId        String
+  professionId   String
+
+  // Snapshot
+  trade          String
+
+  postcode       String
+  city           String
+
+  description    String
+
+  budgetInPence  Int?
+
+  preferredDate  DateTime?
+
+  status         QuoteStatus   @default(PENDING)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  conversations Conversation[]
+
+  customer       User          @relation("CustomerQuotes", fields: [customerId], references: [id], onDelete: Cascade)
+
+  profession     Profession    @relation(fields: [professionId], references: [id])
+
+  tradeRef       Trade         @relation(fields: [tradeId], references: [id])
+
+  responses      QuoteResponse[]
+
+  @@index([customerId])
+  @@index([trade])
+  @@index([tradeId])
+  @@index([professionId])
+  @@index([tradeId, professionId])
+  @@index([status])
+}

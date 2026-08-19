@@ -38,7 +38,9 @@ const register = catchAsync(async (req: Request, res: Response) => {
   sendResponse(
     res,
     201,
-    "Account created. Please verify your email address before logging in.",
+    result.accountCreated
+      ? "Account created. Please verify your email address before logging in."
+      : "An account with this email already exists and is unverified. A new verification link has been sent to your email.",
     result
   );
 });
@@ -66,8 +68,23 @@ const login = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const verifyEmail = catchAsync(async (req: Request, res: Response) => {
+const validateEmailVerification = catchAsync(async (req: Request, res: Response) => {
   const token = req.query.token as string | undefined;
+
+  if (!token) {
+    sendResponse(res, 400, "Verification token is required", null);
+    return;
+  }
+
+  const user = await AuthService.validateEmailVerification({ token });
+
+  sendResponse(res, 200, "Verification link is valid. Please confirm it below.", {
+    user,
+  });
+});
+
+const verifyEmail = catchAsync(async (req: Request, res: Response) => {
+  const token = (req.body?.token ?? req.query.token) as string | undefined;
 
   if (!token) {
     sendResponse(res, 400, "Verification token is required", null);
@@ -178,6 +195,7 @@ export const AuthController = {
   forgetPassword,
   resetPassword,
   logout,
+  validateEmailVerification,
   verifyEmail,
   resendVerification,
 };

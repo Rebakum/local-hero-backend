@@ -1,0 +1,92 @@
+
+model Professional {
+  id                String   @id @default(uuid())
+
+  userId            String?  @unique
+
+  tradeId           String
+  professionId      String
+
+  // Snapshot/display value
+  trade             String
+
+  name              String
+  companyName       String
+
+  companyLogo       String?
+  avatar            String?
+
+  rating            Float   @default(0)
+  reviewCount       Int     @default(0)
+  jobsCompleted     Int     @default(0)
+
+  hourlyRate        Int     @default(0)
+
+  location          String
+  postcodeArea      String
+
+  responseMinutes   Int     @default(30)
+
+  verifiedStatus    Json    @default("{}")
+
+  bio               String
+
+  specialties       String[]
+
+  availability      String  @default("Available Today")
+
+  portfolioImages   String[]
+
+  badgeText         String?
+
+  isFeatured        Boolean @default(false)
+
+  sortOrder         Int     @default(0)
+
+  workingHours      Json?
+
+  certifications    String[]
+
+  insuranceInfo     String?
+
+  serviceAreas      String[]
+
+  yearsOfExperience Int?
+
+  isVerified        Boolean @default(false)
+
+  isEmergency       Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  profession        Profession @relation(fields: [professionId], references: [id])
+
+  tradeRef          Trade @relation(fields: [tradeId], references: [id])
+
+  user              User? @relation(fields: [userId], references: [id])
+
+  bookings          Booking[]
+
+  conversations     Conversation[]
+
+  application       ProviderApplication?
+
+  subscriptions     ProviderSubscription?
+
+  quoteResponses    QuoteResponse[]
+
+  favourites        SavedProfessional[]
+
+  testimonialsReceived Testimonial[] @relation("ProfessionalTestimonials")
+
+  @@index([trade])
+  @@index([tradeId])
+  @@index([professionId])
+  @@index([tradeId, professionId])
+  @@index([postcodeArea])
+  @@index([isVerified])
+  @@index([isEmergency])
+  @@index([isFeatured])
+}

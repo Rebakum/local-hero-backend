@@ -6,6 +6,7 @@ import { SuperAdminRoutes } from "../modules/super-admin/super-admin.route";
 import { ProfessionalRoutes } from "../modules/professionals/professional.route";
 import { ProfessionRoutes } from "../modules/professions/profession.route";
 import { TradeRoutes } from "../modules/trades/trade.route";
+import { FeaturedServiceRoutes } from "../modules/featured-services/featured-service.route";
 import { BeforeAfterRoutes } from "../modules/before-after/before-after.route";
 import { TestimonialRoutes } from "../modules/testimonials/testimonial.route";
 import { ProviderApplicationRoutes } from "../modules/provider-applications/provider-application.route";
@@ -28,6 +29,7 @@ const moduleRoutes = [
   { path: "/professionals", route: ProfessionalRoutes },
   { path: "/professions", route: ProfessionRoutes },
   { path: "/trades", route: TradeRoutes },
+  { path: "/featured-services", route: FeaturedServiceRoutes },
   { path: "/before-after", route: BeforeAfterRoutes },
   { path: "/testimonials", route: TestimonialRoutes },
   { path: "/provider-applications", route: ProviderApplicationRoutes },

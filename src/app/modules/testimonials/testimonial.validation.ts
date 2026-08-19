@@ -38,6 +38,7 @@ const updateTestimonialValidation = z.object({
     sortOrder: z.number().int().optional(),
     isApproved: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
+    moderationNote: z.string().trim().max(1000).nullable().optional(),
   }),
   params: z.object({
     id: z.string().uuid("Invalid testimonial ID"),

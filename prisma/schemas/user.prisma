@@ -1,0 +1,44 @@
+
+model User {
+  id                     String               @id @default(uuid())
+  name                   String
+  email                  String               @unique
+  password               String
+  role                   Role                 @default(user)
+  phone                  String?
+  avatar                 String?
+  approvalStatus         ApprovalStatus       @default(APPROVED)
+  category               String?
+  experienceYears        Int?
+  serviceDetails         String?
+
+  resetPasswordToken     String?
+  resetPasswordExpiresAt DateTime?
+
+  emailVerified          Boolean              @default(false)
+  verificationToken      String?
+  verificationExpiresAt  DateTime?
+
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  bookings               Booking[]            @relation("CustomerBookings")
+  conversations          Conversation[]       @relation("CustomerConversations")
+  sentMessages           Message[]            @relation("SentMessages")
+  notifications          Notification[]
+
+  professional           Professional?
+
+  reviewedApplications   ProviderApplication[] @relation("ReviewedApplications")
+  providerApplications   ProviderApplication[] @relation("UserApplications")
+
+  quotes                 Quote[]              @relation("CustomerQuotes")
+  favourites             SavedProfessional[]  @relation("FavouriteProfessionals")
+
+  sessions               Session[]
+
+  assignedTickets        SupportTicket[]      @relation("AssignedSupportTickets")
+  supportTickets         SupportTicket[]      @relation("UserSupportTickets")
+
+  testimonials           Testimonial[]
+}

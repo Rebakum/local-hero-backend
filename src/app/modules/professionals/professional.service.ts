@@ -1,6 +1,7 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
 import { resolveTradeRelations } from "../../utils/tradeResolver";
+import { recalculateActiveProsCount } from "../trades/trade.service";
 import { IGetAllProfessionalsQuery } from "./professional.interface";
 
 const getAll = async (query: IGetAllProfessionalsQuery) => {
@@ -35,12 +36,36 @@ const getAll = async (query: IGetAllProfessionalsQuery) => {
       skip,
       take: limit,
       orderBy: { sortOrder: "asc" },
+      include: {
+        testimonialsReceived: {
+          where: { isApproved: true },
+          select: { rating: true },
+        },
+      },
     }),
     prisma.professional.count({ where }),
   ]);
 
+  // Derive rating + review count from the professional's live (approved)
+  // reviews instead of trusting stale counters stored on the row.
+  const professionalsWithReviews = professionals.map(
+    ({ testimonialsReceived, ...professional }) => {
+      const reviewCount = testimonialsReceived.length;
+      const rating =
+        reviewCount === 0
+          ? professional.rating
+          : testimonialsReceived.reduce((sum, t) => sum + t.rating, 0) / reviewCount;
+
+      return {
+        ...professional,
+        reviewCount,
+        rating: Math.round(rating * 10) / 10,
+      };
+    }
+  );
+
   return {
-    professionals,
+    professionals: professionalsWithReviews,
     meta: { page, limit, total },
   };
 };
@@ -48,30 +73,33 @@ const getAll = async (query: IGetAllProfessionalsQuery) => {
 const getById = async (id: string) => {
   const professional = await prisma.professional.findUnique({
     where: { id },
+    include: {
+      // Only approved reviews are public. Hidden/moderation reviews must not
+      // surface on the professional profile.
+      testimonialsReceived: {
+        where: { isApproved: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
   if (!professional) {
     throw new AppError(404, "Professional not found");
   }
 
-  return professional;
-};
+  const { testimonialsReceived, ...rest } = professional;
+  const reviewCount = testimonialsReceived.length;
+  const rating =
+    reviewCount === 0
+      ? rest.rating
+      : testimonialsReceived.reduce((sum, t) => sum + t.rating, 0) / reviewCount;
 
-const create = async (data: Record<string, unknown>) => {
-  const { tradeId, professionId, trade } = await resolveTradeRelations(
-    data.trade as string
-  );
-
-  const professional = await prisma.professional.create({
-    data: {
-      ...(data as any),
-      tradeId,
-      professionId,
-      trade,
-    },
-  });
-
-  return professional;
+  return {
+    ...rest,
+    reviewCount,
+    rating: Math.round(rating * 10) / 10,
+    reviews: testimonialsReceived,
+  };
 };
 
 const update = async (id: string, data: Record<string, unknown>) => {
@@ -99,6 +127,13 @@ const update = async (id: string, data: Record<string, unknown>) => {
     data: payload,
   });
 
+  // Recalculate for both the previous and the new trade so a trade move
+  // keeps both counts accurate.
+  await recalculateActiveProsCount(payload.tradeId ?? existing.tradeId);
+  if (payload.tradeId && payload.tradeId !== existing.tradeId) {
+    await recalculateActiveProsCount(existing.tradeId);
+  }
+
   return professional;
 };
 
@@ -109,13 +144,31 @@ const deleteProfessional = async (id: string) => {
     throw new AppError(404, "Professional not found");
   }
 
+  const [bookingCount, conversationCount, testimonialCount, quoteResponseCount, savedProfessionalCount] = await Promise.all([
+    prisma.booking.count({ where: { professionalId: id } }),
+    prisma.conversation.count({ where: { professionalId: id } }),
+    prisma.testimonial.count({ where: { professionalId: id } }),
+    prisma.quoteResponse.count({ where: { professionalId: id } }),
+    prisma.savedProfessional.count({ where: { professionalId: id } }),
+  ]);
+
+  const linkedCount = bookingCount + conversationCount + testimonialCount + quoteResponseCount + savedProfessionalCount;
+
+  if (linkedCount > 0) {
+    throw new AppError(
+      409,
+      `Cannot delete this professional — ${bookingCount} booking(s), ${conversationCount} conversation(s), ${testimonialCount} testimonial(s), ${quoteResponseCount} quote response(s), and ${savedProfessionalCount} saved professional record(s) are still linked to it. Remove or reassign them first.`
+    );
+  }
+
   await prisma.professional.delete({ where: { id } });
+
+  await recalculateActiveProsCount(existing.tradeId);
 };
 
 export const ProfessionalService = {
   getAll,
   getById,
-  create,
   update,
   deleteProfessional,
 };

@@ -1,0 +1,28 @@
+
+model FeaturedService {
+  id              String   @id @default(uuid())
+
+  tradeId         String
+
+  title           String
+  estimatedPrice  String
+  timeEstimate    String
+
+  popularFor      String[]
+  description     String
+  included        String[]
+
+  imageUrl        String?
+
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId])
+  @@index([isActive])
+  @@index([sortOrder])
+}

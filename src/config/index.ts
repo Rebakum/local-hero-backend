@@ -84,9 +84,11 @@ const config = {
   },
 
   emailVerification: {
-    // How long a verification link stays valid.
+    // Verification links are issued with a fixed 1-hour lifetime in
+    // auth.service.ts (VERIFICATION_TTL_MS). This value is kept only as a
+    // documentation default; the service no longer reads it.
     expiresInMinutes: parseInt(
-      process.env.ENVIRONMENT_VARIABLE_EMAIL_VERIFY_EXPIRES_IN_MINUTES || "30",
+      process.env.ENVIRONMENT_VARIABLE_EMAIL_VERIFY_EXPIRES_IN_MINUTES || "60",
       10
     ),
   },

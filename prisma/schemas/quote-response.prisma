@@ -1,0 +1,26 @@
+
+model QuoteResponse {
+  id              String       @id @default(uuid())
+
+  quoteId         String
+  professionalId  String
+
+  amountInPence   Int
+
+  message         String?
+
+  status          QuoteStatus  @default(PENDING)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  booking         Booking?
+
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  quote           Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, professionalId])
+  @@index([professionalId])
+  @@index([quoteId])
+}

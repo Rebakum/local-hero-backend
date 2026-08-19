@@ -1,0 +1,29 @@
+
+model ProviderSubscription {
+  id              String             @id @default(uuid())
+
+  professionalId  String             @unique
+
+  plan            SubscriptionPlan   @default(FREE)
+
+  status          SubscriptionStatus @default(ACTIVE)
+
+  priceInPence    Int                @default(0)
+
+  startedAt       DateTime           @default(now())
+
+  expiresAt       DateTime?
+
+  isFeatured      Boolean            @default(false)
+
+  featureStartAt  DateTime?
+  featureEndAt    DateTime?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  professional    Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([plan])
+}

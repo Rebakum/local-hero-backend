@@ -1,0 +1,26 @@
+
+model Profession {
+  id          String   @id @default(uuid())
+  tradeId     String
+
+  name        String
+  description String?
+
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trade          Trade                 @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  bookings       Booking[]
+  professionals  Professional[]
+  applications   ProviderApplication[]
+  quotes         Quote[]
+
+  @@unique([tradeId, name])
+  @@index([tradeId])
+  @@index([isActive])
+  @@index([sortOrder])
+}

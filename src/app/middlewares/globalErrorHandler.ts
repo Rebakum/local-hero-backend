@@ -45,6 +45,11 @@ const globalErrorHandler = (
       message = "Record not found.";
     }
 
+    if (appError.code === "P2003") {
+      statusCode = 409;
+      message = "Cannot delete this record because it is still referenced by other data.";
+    }
+
     // Multer file-upload errors (wrong field name, file too large, etc.)
     // arrive with a "LIMIT_*" code instead of a statusCode.
     if (typeof appError.code === "string" && appError.code.startsWith("LIMIT_")) {

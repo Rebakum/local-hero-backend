@@ -25,12 +25,6 @@ const getById = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Professional retrieved successfully", result);
 });
 
-const create = catchAsync(async (req: Request, res: Response) => {
-  const result = await ProfessionalService.create(req.body);
-
-  sendResponse(res, 201, "Professional created successfully", result);
-});
-
 const update = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await ProfessionalService.update(id, req.body);
@@ -48,7 +42,6 @@ const deleteProfessional = catchAsync(async (req: Request, res: Response) => {
 export const ProfessionalController = {
   getAll,
   getById,
-  create,
   update,
   deleteProfessional,
 };

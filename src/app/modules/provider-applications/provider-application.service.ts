@@ -1,8 +1,8 @@
 import prisma from "../../../config/prisma";
 import AppError from "../../utils/AppError";
-import { resolveTradeRelations } from "../../utils/tradeResolver";
 import { sendTransactionalEmail } from "../../utils/email";
 import { NotificationService } from "../notifications/notification.service";
+import { recalculateActiveProsCount } from "../trades/trade.service";
 import { TGetProviderApplicationsQuery } from "./provider-application.validation";
 
 // Fetch emails of every ADMIN / SUPER_ADMIN account.
@@ -12,6 +12,38 @@ const getAdminEmails = async (): Promise<string[]> => {
     select: { email: true },
   });
   return admins.map((a) => a.email);
+};
+
+const resolveTradeAndProfession = async (
+  tradeId: string,
+  professionId: string
+) => {
+  const tradeRecord = await prisma.trade.findUnique({
+    where: { id: tradeId },
+  });
+  if (!tradeRecord) {
+    throw new AppError(404, "Trade not found");
+  }
+
+  const profession = await prisma.profession.findUnique({
+    where: { id: professionId },
+  });
+  if (!profession) {
+    throw new AppError(404, "Profession not found");
+  }
+
+  if (profession.tradeId !== tradeRecord.id) {
+    throw new AppError(
+      400,
+      "Selected profession does not belong to the selected trade"
+    );
+  }
+
+  return {
+    tradeId: tradeRecord.id,
+    professionId: profession.id,
+    trade: tradeRecord.category,
+  };
 };
 
 const create = async (userId: string, data: Record<string, unknown>) => {
@@ -36,7 +68,10 @@ const create = async (userId: string, data: Record<string, unknown>) => {
     throw new AppError(409, "You already have a pending provider application");
   }
 
-  const resolved = await resolveTradeRelations(data.trade as string);
+  const resolved = await resolveTradeAndProfession(
+    data.tradeId as string,
+    data.professionId as string
+  );
 
   const application = await prisma.providerApplication.create({
     data: {
@@ -111,14 +146,18 @@ const updateMyApplication = async (
 
   const payload = { ...(data as any) };
 
-  if (payload.trade) {
-    const resolved = await resolveTradeRelations(payload.trade);
+  if (payload.tradeId || payload.professionId) {
+    const resolved = await resolveTradeAndProfession(
+      (payload.tradeId as string) ?? application.tradeId,
+      (payload.professionId as string) ?? application.professionId
+    );
     payload.tradeId = resolved.tradeId;
     payload.professionId = resolved.professionId;
     payload.trade = resolved.trade;
   } else {
     delete payload.tradeId;
     delete payload.professionId;
+    delete payload.trade;
   }
 
   const updated = await prisma.providerApplication.update({
@@ -284,6 +323,10 @@ const approve = async (id: string, reviewerId: string) => {
             },
           },
         });
+
+    // A Professional row now exists under this trade -> keep the stored
+    // activeProsCount in sync (counted inside the same transaction).
+    await recalculateActiveProsCount(application.tradeId, tx);
 
     return { application: updatedApplication, professional };
   });

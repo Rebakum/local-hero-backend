@@ -1,0 +1,26 @@
+
+model SupportTicket {
+  id          String             @id @default(uuid())
+
+  userId      String
+
+  subject     String
+  message     String
+
+  status      SupportTicketStatus @default(OPEN)
+
+  assignedTo  String?
+
+  resolvedAt  DateTime?
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  assignee    User? @relation("AssignedSupportTickets", fields: [assignedTo], references: [id])
+
+  user        User @relation("UserSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([assignedTo])
+}

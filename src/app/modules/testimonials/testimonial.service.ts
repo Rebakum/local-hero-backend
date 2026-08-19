@@ -7,7 +7,6 @@ import {
   TGetTestimonialsQuery,
   TUpdateTestimonialPayload,
 } from "./testimonial.validation";
-
 const getAll = async (
   query: TGetTestimonialsQuery,
   requester?: { role: string }
@@ -54,6 +53,11 @@ const getAll = async (
       skip,
       take: limit,
       orderBy: { createdAt: "desc" },
+      include: {
+        professional: {
+          select: { id: true, name: true, companyName: true },
+        },
+      },
     }),
     prisma.testimonial.count({ where }),
   ]);
@@ -90,10 +94,12 @@ const create = async (userId: string, data: TCreateTestimonialPayload) => {
   // and only once that booking has actually been COMPLETED. This prevents
   // arbitrary users reviewing someone else's booking and stops incomplete or
   // cancelled bookings from triggering the completed-service review flow.
+  let professionalId = data.professionalId;
+
   if (data.bookingId) {
     const booking = await prisma.booking.findUnique({
       where: { id: data.bookingId },
-      select: { customerId: true, status: true },
+      select: { customerId: true, status: true, professionalId: true },
     });
 
     if (!booking) {
@@ -108,12 +114,20 @@ const create = async (userId: string, data: TCreateTestimonialPayload) => {
     if (booking.status !== "COMPLETED") {
       throw new AppError(400, "You can only review a completed booking");
     }
+
+    // Link the review to the professional who did the booked job so it shows
+    // up on their public profile. Reviews submitted through a booking always
+    // belong to that booking's assigned professional.
+    if (booking.professionalId) {
+      professionalId = booking.professionalId;
+    }
   }
 
   const testimonial = await prisma.testimonial.create({
     data: {
       ...data,
-      userId, 
+      userId,
+      professionalId: professionalId ?? null,
     } as any,
   });
 
@@ -167,18 +181,92 @@ const update = async (
     throw new AppError(403, "You can only update your own testimonial");
   }
 
-  // Only admins may change moderation/visibility flags.
-  const { isApproved, isFeatured, ...ownerData } = data;
-  const safeData = isAdmin
-    ? data
-    : ownerData;
+  // Only admins may change moderation/visibility flags and attach a
+  // moderation note. Owners can only edit their own review content.
+  const { isApproved, isFeatured, moderationNote, ...ownerData } = data;
+  const safeData = isAdmin ? data : ownerData;
+
+  const wasApproved = existing.isApproved;
 
   const testimonial = await prisma.testimonial.update({
     where: { id },
     data: safeData,
   });
 
+  // Post-moderation: when an admin hides a previously-public review, notify
+  // the author in-app and by email so they aren't left guessing.
+  if (isAdmin && isApproved === false && wasApproved === true) {
+    void notifyReviewHidden(testimonial, data.moderationNote ?? null);
+  }
+
+  // Restoring a hidden review: a light "visible again" heads-up.
+  if (isAdmin && isApproved === true && wasApproved === false) {
+    void notifyReviewRestored(testimonial);
+  }
+
   return testimonial;
+};
+
+// Tell the review author their review was hidden by moderation: in-app
+// notification + transactional email. Fire-and-forget so a delivery failure
+// never breaks the moderation flow.
+const notifyReviewHidden = async (
+  testimonial: {
+    id: string;
+    userId: string | null;
+    author: string;
+  },
+  note: string | null
+): Promise<void> => {
+  if (!testimonial.userId) return;
+
+  await NotificationService.create({
+    userId: testimonial.userId,
+    type: "REVIEW_HIDDEN",
+    title: "Your review was hidden",
+    body: note
+      ? `Your review was hidden by our moderation team: ${note}`
+      : "Your review was removed from public view as it didn't meet our platform guidelines.",
+    data: { testimonialId: testimonial.id },
+  }).catch(() => undefined);
+
+  const authorUser = await prisma.user.findUnique({
+    where: { id: testimonial.userId },
+    select: { email: true, name: true },
+  });
+  if (authorUser?.email) {
+    void sendTransactionalEmail("REVIEW_HIDDEN", authorUser.email, {
+      authorName: authorUser.name,
+      note,
+    });
+  }
+};
+
+// Restoring a previously-hidden review: a short "visible again" notification
+// (+ optional email) so the author knows their review is public once more.
+const notifyReviewRestored = async (testimonial: {
+  id: string;
+  userId: string | null;
+}): Promise<void> => {
+  if (!testimonial.userId) return;
+
+  await NotificationService.create({
+    userId: testimonial.userId,
+    type: "REVIEW_RESTORED",
+    title: "Your review is visible again",
+    body: "Your review has been restored and is public on LocalHero again.",
+    data: { testimonialId: testimonial.id },
+  }).catch(() => undefined);
+
+  const authorUser = await prisma.user.findUnique({
+    where: { id: testimonial.userId },
+    select: { email: true, name: true },
+  });
+  if (authorUser?.email) {
+    void sendTransactionalEmail("REVIEW_RESTORED", authorUser.email, {
+      authorName: authorUser.name,
+    });
+  }
 };
 
 // The professional whose business the review belongs to can reply publicly.

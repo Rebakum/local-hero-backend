@@ -1,0 +1,52 @@
+
+model Testimonial {
+  id                 String        @id @default(uuid())
+
+  author             String
+  role               String        @default("Homeowner")
+  city               String
+
+  trade              String
+
+  rating             Int           @default(5)
+  date               String
+
+  comment            String
+
+  verifiedJob        String
+
+  avatar             String?
+
+  source             String        @default("PLATFORM")
+
+  sortOrder          Int           @default(0)
+
+  isApproved         Boolean       @default(true)
+  isFeatured         Boolean       @default(false)
+
+  moderationNote     String?
+
+  photos             String[]
+
+  recommended        Boolean       @default(true)
+
+  businessResponse   String?
+  businessResponseAt DateTime?
+
+  bookingId          String?       @unique
+  userId             String?
+  professionalId     String?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  booking            Booking?      @relation(fields: [bookingId], references: [id])
+
+  professional       Professional? @relation("ProfessionalTestimonials", fields: [professionalId], references: [id])
+
+  user               User?         @relation(fields: [userId], references: [id])
+
+  @@index([isApproved, isFeatured])
+  @@index([professionalId])
+  @@index([userId])
+}

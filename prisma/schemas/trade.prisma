@@ -1,0 +1,37 @@
+model Trade {
+  id              String   @id @default(uuid())
+
+  category        String   @unique
+  subtitle        String?
+  iconUrl         String?
+
+  description     String
+
+  avgHourlyRate   String
+  startingPrice   String?
+
+  
+  activeProsCount Int      @default(0)
+
+  popularTasks    String[]
+  badge           String?
+
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  professions       Profession[]
+  featuredServices  FeaturedService[]
+
+  bookings          Booking[]
+  professionals     Professional[]
+  applications      ProviderApplication[]
+  quotes            Quote[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([sortOrder])
+}

@@ -1,0 +1,30 @@
+
+model Conversation {
+  id              String        @id @default(uuid())
+
+  customerId      String
+  professionalId  String
+
+  bookingId       String?
+  quoteId         String?
+
+  lastMessageAt   DateTime      @default(now())
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking         Booking?      @relation(fields: [bookingId], references: [id])
+
+  customer        User          @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade)
+
+  professional    Professional  @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  quote           Quote?        @relation(fields: [quoteId], references: [id])
+
+  messages        Message[]
+
+  @@index([customerId])
+  @@index([professionalId])
+  @@index([bookingId])
+  @@index([quoteId])
+}

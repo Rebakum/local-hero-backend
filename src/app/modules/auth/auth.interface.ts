@@ -53,5 +53,6 @@ export interface IAuthResponse {
 }
 
 export interface IRegisterResponse {
+  accountCreated: boolean;
   user: IAuthUser;
 }

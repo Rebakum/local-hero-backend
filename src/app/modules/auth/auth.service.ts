@@ -21,6 +21,7 @@ import {
   IResendVerificationPayload,
 } from "./auth.interface";
 import { Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
 
 const generateTokens = (user: { id: string; email: string; role: Role }) => {
@@ -59,14 +60,23 @@ const hashToken = (token: string): string =>
 const generateVerificationToken = (): string =>
   crypto.randomBytes(32).toString("hex");
 
-const issueVerification = async (userId: string): Promise<string> => {
+// Verification links must be valid for exactly 1 hour.
+const VERIFICATION_TTL_MS = 1 * 60 * 60 * 1000;
+
+// Minimum wait before the verification email can be resent (spam guard).
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+
+const issueVerification = async (
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+): Promise<string> => {
   const verificationToken = generateVerificationToken();
 
   const verificationExpiresAt = new Date(
-    Date.now() + config.emailVerification.expiresInMinutes * 60 * 1000
+    Date.now() + VERIFICATION_TTL_MS
   );
 
-  await prisma.user.update({
+  await client.user.update({
     where: { id: userId },
     data: {
       verificationToken: hashToken(verificationToken),
@@ -86,8 +96,39 @@ const register = async (
     where: { email: payload.email },
   });
 
+  // Existing verified account: refuse to create a duplicate.
+  if (existingUser?.emailVerified) {
+    throw new AppError(
+      409,
+      "An account with this email already exists. Please sign in."
+    );
+  }
+
+  // Existing UNVERIFIED account: never create a duplicate. Rotate the
+  // verification token and resend the link so the user can pick up where
+  // they left off.
   if (existingUser) {
-    throw new AppError(409, "A user with this email already exists");
+    const verificationToken = await issueVerification(existingUser.id);
+
+    void sendVerificationEmail(
+      existingUser.email,
+      existingUser.name,
+      verificationToken
+    ).catch((error) =>
+      console.error("[Auth] Failed to resend verification email:", error)
+    );
+
+    return {
+      accountCreated: false,
+      user: {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role,
+        approvalStatus: existingUser.approvalStatus,
+        emailVerified: false,
+      },
+    };
   }
 
   const hashedPassword = await bcrypt.hash(
@@ -95,18 +136,26 @@ const register = async (
     config.bcryptSaltRounds
   );
 
-  const user = await prisma.user.create({
-    data: {
-      name: payload.name,
-      email: payload.email,
-      password: hashedPassword,
-      phone: payload.phone,
-      emailVerified: false,
-    },
-  });
+  // User creation and verification-token storage must be atomic: if the
+  // token write fails, the whole registration rolls back so we never leave
+  // an orphan user stuck at emailVerified=false with no working link.
+  const { user, verificationToken } = await prisma.$transaction(
+    async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: payload.name,
+          email: payload.email,
+          password: hashedPassword,
+          phone: payload.phone,
+          emailVerified: false,
+        },
+      });
 
-  // Save a hashed verification token + expiry, then email the link.
-  const verificationToken = await issueVerification(user.id);
+      const verificationToken = await issueVerification(user.id, tx);
+
+      return { user, verificationToken };
+    }
+  );
 
   // A failed send must never roll back the account. Log it so the user can
   // request a new link via the resend endpoint.
@@ -127,6 +176,7 @@ const register = async (
   }).catch(() => undefined);
 
   return {
+    accountCreated: true,
     user: {
       id: user.id,
       name: user.name,
@@ -148,7 +198,10 @@ const login = async (
   });
 
   if (!user) {
-    throw new AppError(401, "Invalid email or password");
+    throw new AppError(
+      401,
+      "No account found with this email. Please sign up first."
+    );
   }
 
   const isPasswordValid = await bcrypt.compare(
@@ -157,13 +210,13 @@ const login = async (
   );
 
   if (!isPasswordValid) {
-    throw new AppError(401, "Invalid email or password");
+    throw new AppError(401, "Invalid email or password.");
   }
 
   if (!user.emailVerified) {
     throw new AppError(
       403,
-      "Please verify your email address before logging in. Check your inbox for the verification link we sent you."
+      "Please verify your email address before signing in."
     );
   }
 
@@ -279,25 +332,86 @@ const getMe = async (userId: string) => {
   return user;
 };
 
-const verifyEmail = async (
+const validateEmailVerification = async (
   payload: IVerifyEmailPayload
 ): Promise<IRegisterResponse["user"]> => {
+  const hashedToken = hashToken(payload.token);
+
   const user = await prisma.user.findFirst({
     where: {
-      verificationToken: hashToken(payload.token),
-      verificationExpiresAt: { gt: new Date() },
+      verificationToken: hashedToken,
     },
   });
 
   if (!user) {
     throw new AppError(
       400,
-      "Invalid or expired verification link. Please request a new one."
+      "Verification link is invalid or has already been used. Please request a new one."
     );
   }
 
-  const verified = await prisma.user.update({
-    where: { id: user.id },
+  if (user.emailVerified) {
+    throw new AppError(
+      400,
+      "This email is already verified. Please sign in."
+    );
+  }
+
+  if (!user.verificationExpiresAt || user.verificationExpiresAt < new Date()) {
+    throw new AppError(
+      400,
+      "Verification link has expired. Please request a new one."
+    );
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    approvalStatus: user.approvalStatus,
+    emailVerified: false,
+  };
+};
+
+const verifyEmail = async (
+  payload: IVerifyEmailPayload
+): Promise<IRegisterResponse["user"]> => {
+  const hashedToken = hashToken(payload.token);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      verificationToken: hashedToken,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(
+      400,
+      "Verification link is invalid or has already been used. Please request a new one."
+    );
+  }
+
+  if (user.emailVerified) {
+    throw new AppError(
+      400,
+      "This email is already verified. Please sign in."
+    );
+  }
+
+  if (!user.verificationExpiresAt || user.verificationExpiresAt < new Date()) {
+    throw new AppError(
+      400,
+      "Verification link has expired. Please request a new one."
+    );
+  }
+
+  const result = await prisma.user.updateMany({
+    where: {
+      id: user.id,
+      verificationToken: hashedToken,
+      emailVerified: false,
+    },
     data: {
       emailVerified: true,
       verificationToken: null,
@@ -305,12 +419,19 @@ const verifyEmail = async (
     },
   });
 
+  if (result.count === 0) {
+    throw new AppError(
+      400,
+      "Verification link is invalid or has already been used. Please request a new one."
+    );
+  }
+
   return {
-    id: verified.id,
-    name: verified.name,
-    email: verified.email,
-    role: verified.role,
-    approvalStatus: verified.approvalStatus,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    approvalStatus: user.approvalStatus,
     emailVerified: true,
   };
 };
@@ -328,6 +449,24 @@ const resendVerificationEmail = async (
     return;
   }
 
+  // Cooldown: because every token is issued with a fixed 1-hour lifetime,
+  // the last send time is derivable from verificationExpiresAt. Reject
+  // rapid repeats to prevent email spam.
+  const sentAt = user.verificationExpiresAt
+    ? user.verificationExpiresAt.getTime() - VERIFICATION_TTL_MS
+    : 0;
+  if (
+    sentAt > 0 &&
+    Date.now() - sentAt < VERIFICATION_RESEND_COOLDOWN_MS
+  ) {
+    throw new AppError(
+      429,
+      "A verification email was sent recently. Please wait a minute before requesting another one."
+    );
+  }
+
+  // issueVerification overwrites (invalidates) the previous token and
+  // stamps a fresh 1-hour expiry.
   const verificationToken = await issueVerification(user.id);
 
   await sendVerificationEmail(
@@ -448,6 +587,7 @@ export const AuthService = {
   forgetPassword,
   resetPassword,
   logout,
+  validateEmailVerification,
   verifyEmail,
   resendVerificationEmail,
 };

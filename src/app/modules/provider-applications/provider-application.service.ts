@@ -328,6 +328,23 @@ const approve = async (id: string, reviewerId: string) => {
     // activeProsCount in sync (counted inside the same transaction).
     await recalculateActiveProsCount(application.tradeId, tx);
 
+    // Every approved professional gets the FREE plan entitlement by default.
+    const freePlan = await tx.subscriptionPlan.findUnique({
+      where: { slug: "free" },
+    });
+
+    await tx.providerSubscription.upsert({
+      where: { professionalId: professional.id },
+      create: {
+        professionalId: professional.id,
+        plan: "FREE",
+        planId: freePlan?.id ?? undefined,
+        status: "ACTIVE",
+        priceInPence: 0,
+      },
+      update: {},
+    });
+
     return { application: updatedApplication, professional };
   });
 

@@ -81,6 +81,8 @@ model Professional {
 
   testimonialsReceived Testimonial[] @relation("ProfessionalTestimonials")
 
+  beforeAfterProjects BeforeAfterProject[]
+
   @@index([trade])
   @@index([tradeId])
   @@index([professionId])

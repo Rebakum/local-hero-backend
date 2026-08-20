@@ -31,10 +31,17 @@ const resolveFolder = (req: Request): CloudinaryFolder => {
   const role = req.user?.role;
 
   if (isAdminOnly && role !== "ADMIN" && role !== "SUPER_ADMIN") {
-    throw new AppError(
-      403,
-      `Only admins can upload images to the "${folder}" folder`
-    );
+    // service providers may upload to "before-after" (their verified job
+    // showcase submission) but "trades" remains admin-only.
+    const isProviderBeforeAfter =
+      folder === "before-after" && role === "serviceProvider";
+
+    if (!isProviderBeforeAfter) {
+      throw new AppError(
+        403,
+        `Only admins can upload images to the "${folder}" folder`
+      );
+    }
   }
 
   return folder as CloudinaryFolder;

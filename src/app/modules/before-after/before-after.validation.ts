@@ -2,37 +2,24 @@ import { z } from "zod";
 
 const createBeforeAfterValidation = z.object({
   body: z.object({
-    title: z.string().min(1, "Title is required"),
-    trade: z.string().min(1, "Trade is required"),
-    location: z.string().min(1, "Location is required"),
-    beforeImage: z
-      .string()
-      .url("Before image must be a valid URL")
-      .nullable()
-      .optional(),
-    afterImage: z
-      .string()
-      .url("After image must be a valid URL")
-      .nullable()
-      .optional(),
+    bookingId: z.string().uuid("Invalid booking ID"),
+    beforeImage: z.string().url("Before image must be a valid URL"),
+    afterImage: z.string().url("After image must be a valid URL"),
     description: z.string().min(1, "Description is required"),
     cost: z.string().min(1, "Cost is required"),
     completionDays: z.string().min(1, "Completion days is required"),
-    sortOrder: z.number().int().optional(),
   }),
 });
 
 const updateBeforeAfterValidation = z.object({
   body: z.object({
     title: z.string().min(1).optional(),
-    trade: z.string().min(1).optional(),
     location: z.string().min(1).optional(),
-    beforeImage: z.string().url().nullable().optional(),
-    afterImage: z.string().url().nullable().optional(),
+    beforeImage: z.string().url("Before image must be a valid URL").optional(),
+    afterImage: z.string().url("After image must be a valid URL").optional(),
     description: z.string().min(1).optional(),
     cost: z.string().min(1).optional(),
     completionDays: z.string().min(1).optional(),
-    sortOrder: z.number().int().optional(),
   }),
   params: z.object({
     id: z.string().uuid("Invalid before/after project ID"),
@@ -51,6 +38,25 @@ const getAllBeforeAfterQueryValidation = z.object({
     limit: z.string().optional(),
     trade: z.string().trim().optional(),
     search: z.string().trim().optional(),
+    status: z.enum(["PENDING", "APPROVED", "REJECTED", "ALL"]).optional(),
+    isFeatured: z.string().optional(),
+    professionalId: z.string().optional(),
+  }),
+});
+
+const updateStatusValidation = z.object({
+  body: z.object({
+    status: z.enum(["APPROVED", "REJECTED"]),
+    rejectionReason: z.string().trim().optional(),
+  }),
+  params: z.object({
+    id: z.string().uuid("Invalid before/after project ID"),
+  }),
+});
+
+const toggleFeatureValidation = z.object({
+  params: z.object({
+    id: z.string().uuid("Invalid before/after project ID"),
   }),
 });
 
@@ -69,4 +75,6 @@ export const BeforeAfterValidation = {
   updateBeforeAfterValidation,
   getBeforeAfterValidation,
   getAllBeforeAfterQueryValidation,
+  updateStatusValidation,
+  toggleFeatureValidation,
 };

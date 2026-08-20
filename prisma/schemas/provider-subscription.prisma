@@ -4,7 +4,11 @@ model ProviderSubscription {
 
   professionalId  String             @unique
 
-  plan            SubscriptionPlan   @default(FREE)
+  // Legacy plan marker (backward compatibility). New Stripe plans are
+  // referenced via planId -> SubscriptionPlan.
+  plan            ProviderPlan       @default(FREE)
+
+  planId          String?
 
   status          SubscriptionStatus @default(ACTIVE)
 
@@ -19,11 +23,22 @@ model ProviderSubscription {
   featureStartAt  DateTime?
   featureEndAt    DateTime?
 
+  // Stripe-backed subscription fields
+  stripeCustomerId     String?
+  stripeSubscriptionId String?        @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean        @default(false)
+  canceledAt           DateTime?
+
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   professional    Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  planDetail      SubscriptionPlan?  @relation(fields: [planId], references: [id])
 
   @@index([status])
   @@index([plan])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
 }

@@ -49,5 +49,10 @@ export const startServer = (): void => {
   });
 }
 
-// Call the startServer function
-startServer();
+// Only run the long-lived HTTP server locally / on a normal Node host.
+// On Vercel serverless, the default export (the Express app) is used instead.
+if (process.env.VERCEL !== "1") {
+  startServer();
+}
+
+export default app;

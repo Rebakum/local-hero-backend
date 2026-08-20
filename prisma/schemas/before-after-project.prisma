@@ -2,21 +2,38 @@
 model BeforeAfterProject {
   id              String   @id @default(uuid())
 
-  title           String
+  // Verified real-job link — a booking can only have ONE before/after entry.
+  bookingId       String   @unique
+  professionalId  String
+
+  // Snapshot copied from the booking (trusted server-side source).
   trade           String
+  title           String
   location        String
 
-  beforeImage     String?
-  afterImage      String?
+  beforeImage     String
+  afterImage      String
 
   description     String
   cost            String
   completionDays  String
+
+  // Moderation workflow
+  status          String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  isFeatured      Boolean  @default(false)
+  rejectionReason String?
 
   sortOrder       Int      @default(0)
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Relations
+  booking         Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  professional    Professional @relation(fields: [professionalId], references: [id])
+
   @@index([trade])
+  @@index([status])
+  @@index([professionalId])
+  @@index([isFeatured])
 }

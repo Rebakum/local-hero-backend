@@ -76,7 +76,10 @@ enum NotificationType {
   GENERAL
 }
 
-enum SubscriptionPlan {
+// Legacy per-professional plan marker (kept for backward compatibility with
+// the original admin-managed subscription flow). New plans live in the
+// SubscriptionPlan table and are referenced via ProviderSubscription.planId.
+enum ProviderPlan {
   FREE
   PREMIUM
   FEATURED
@@ -84,8 +87,16 @@ enum SubscriptionPlan {
 
 enum SubscriptionStatus {
   ACTIVE
-  EXPIRED
+  TRIALING
+  PAST_DUE
+  INCOMPLETE
   CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionInterval {
+  MONTHLY
+  YEARLY
 }
 
 enum SupportTicketStatus {

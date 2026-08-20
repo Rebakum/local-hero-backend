@@ -167,6 +167,12 @@ export type TransactionalEmailType =
   | "REVIEW_RESPONSE"
   | "REVIEW_HIDDEN"
   | "REVIEW_RESTORED"
+  | "BEFORE_AFTER_APPROVED"
+  | "BEFORE_AFTER_REJECTED"
+  | "SUBSCRIPTION_ACTIVATED"
+  | "SUBSCRIPTION_PAYMENT_FAILED"
+  | "SUBSCRIPTION_CANCELLED"
+  | "SUBSCRIPTION_ENDING"
   | "PASSWORD_RESET";
 
 // Per-type subject + body. Receives only the fields each module has on hand.
@@ -508,6 +514,40 @@ const templates: Record<
       },
     }),
   }),
+  BEFORE_AFTER_APPROVED: (d) => ({
+    subject: `Your before/after showcase is live`,
+    html: emailShell({
+      title: "Before/after showcase approved 🎉",
+      paragraphs: [
+        `Hi ${firstName(d.professionalName)}`,
+        `Your before/after showcase for the ${d.trade} job has been approved and is now live on your profile.`,
+        "Customers can now see the verified work you've completed — this builds trust and wins you more bookings.",
+      ],
+      cta: {
+        label: "View my profile",
+        url: `${config.clientUrl}/dashboard/provider`,
+      },
+    }),
+  }),
+  BEFORE_AFTER_REJECTED: (d) => ({
+    subject: "Update on your before/after showcase",
+    html: emailShell({
+      title: "Before/after submission update",
+      paragraphs: [
+        `Hi ${firstName(d.professionalName)}`,
+        `Your before/after submission for the ${d.trade} job needs a second look before it can go live.`,
+        d.reason
+          ? `Reason: ${d.reason}`
+          : "Please review the photos and resubmit when ready.",
+        "You can edit and resubmit from your dashboard — we're here to help.",
+      ],
+      cta: {
+        label: "Resubmit",
+        url: `${config.clientUrl}/dashboard/provider/before-after`,
+      },
+      note: "Your submission will appear once an admin approves it.",
+    }),
+  }),
   PASSWORD_RESET: (d) => ({
     subject: "Reset your LocalHero password",
     html: emailShell({
@@ -522,6 +562,68 @@ const templates: Record<
         url: d.resetUrl,
       },
       note: "If you didn't request this, you can safely ignore this email.",
+    }),
+  }),
+  SUBSCRIPTION_ACTIVATED: (d) => ({
+    subject: `Your ${d.planName} subscription is active`,
+    html: emailShell({
+      title: "Your subscription is active 🎉",
+      paragraphs: [
+        `Hi ${firstName(d.name)}`,
+        `Your ${d.planName} subscription is now active.`,
+        "You can manage your plan and billing anytime from your provider dashboard.",
+      ],
+      cta: {
+        label: "Manage subscription",
+        url: `${config.clientUrl}/dashboard/provider/subscription`,
+      },
+    }),
+  }),
+  SUBSCRIPTION_PAYMENT_FAILED: (d) => ({
+    subject: "Action needed: subscription payment failed",
+    html: emailShell({
+      title: "Your payment needs attention",
+      paragraphs: [
+        `Hi ${firstName(d.name)}`,
+        "We couldn't process your subscription payment.",
+        "Please update your payment method to keep your subscription active.",
+      ],
+      cta: {
+        label: "Manage billing",
+        url: `${config.clientUrl}/dashboard/provider/subscription`,
+      },
+    }),
+  }),
+  SUBSCRIPTION_CANCELLED: (d) => ({
+    subject: "Your LocalHero subscription has ended",
+    html: emailShell({
+      title: "Subscription ended",
+      paragraphs: [
+        `Hi ${firstName(d.name)}`,
+        "Your LocalHero subscription is no longer active.",
+        "You can resubscribe at any time to regain premium features.",
+      ],
+      cta: {
+        label: "View plans",
+        url: `${config.clientUrl}/dashboard/provider/subscription`,
+      },
+    }),
+  }),
+  SUBSCRIPTION_ENDING: (d) => ({
+    subject: "Your LocalHero subscription ends soon",
+    html: emailShell({
+      title: "Your subscription will end soon",
+      paragraphs: [
+        `Hi ${firstName(d.name)}`,
+        d.endDate
+          ? `Your subscription is scheduled to end on ${d.endDate}.`
+          : "Your subscription is scheduled to end at the close of your current billing period.",
+        "Resume your subscription before then to keep premium features.",
+      ],
+      cta: {
+        label: "Manage subscription",
+        url: `${config.clientUrl}/dashboard/provider/subscription`,
+      },
     }),
   }),
 };

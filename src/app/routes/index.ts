@@ -18,6 +18,7 @@ import { MessagingRoutes } from "../modules/messaging/messaging.route";
 import { NotificationRoutes } from "../modules/notifications/notification.route";
 import { SubscriptionRoutes } from "../modules/subscriptions/subscription.route";
 import { FavouriteRoutes } from "../modules/favourites/favourite.route";
+import { SupportTicketRoutes } from "../modules/support-tickets/support-ticket.route";
 
 const router = Router();
 
@@ -41,6 +42,7 @@ const moduleRoutes = [
   { path: "/notifications", route: NotificationRoutes },
   { path: "/subscriptions", route: SubscriptionRoutes },
   { path: "/favourites", route: FavouriteRoutes },
+  { path: "/support-tickets", route: SupportTicketRoutes },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

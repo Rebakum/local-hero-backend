@@ -2,7 +2,13 @@
 model SupportTicket {
   id          String             @id @default(uuid())
 
-  userId      String
+  // Optional: set when the submitter is logged in.
+  userId      String?
+
+  // Contact details (used for public / unauthenticated submissions).
+  name        String?
+  email       String?
+  phone       String?
 
   subject     String
   message     String
@@ -18,9 +24,10 @@ model SupportTicket {
 
   assignee    User? @relation("AssignedSupportTickets", fields: [assignedTo], references: [id])
 
-  user        User @relation("UserSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+  user        User? @relation("UserSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
   @@index([assignedTo])
+  @@index([email])
 }

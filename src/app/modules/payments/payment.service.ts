@@ -5,6 +5,7 @@ import config from "../../../config";
 import AppError from "../../utils/AppError";
 import { sendTransactionalEmail } from "../../utils/email";
 import { NotificationService } from "../notifications/notification.service";
+import { SubscriptionService } from "../subscriptions/subscription.service";
 
 const formatGBP = (pence: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
@@ -602,13 +603,25 @@ const handleWebhookEvent = async (
       const session =
         event.data.object as Stripe.Checkout.Session;
 
-      const bookingId =
-        session.metadata?.bookingId;
-
       console.log(
         "Checkout session:",
         session.id
       );
+
+      // One-time Featured add-on purchase (mode: payment, type: feature).
+      if (session.metadata?.type === "feature") {
+        await SubscriptionService.applyFeaturePurchase(session);
+        break;
+      }
+
+      // Recurring subscription checkout — the follow-up
+      // customer.subscription.created/updated events handle the sync.
+      if (session.mode === "subscription") {
+        break;
+      }
+
+      const bookingId =
+        session.metadata?.bookingId;
 
       console.log(
         "Booking ID:",
@@ -877,6 +890,60 @@ const handleWebhookEvent = async (
 
       if (refundedPayment) {
         void notifyPaymentStatus(refundedPayment.bookingId, "refunded");
+      }
+
+      break;
+    }
+
+    /**
+     * ============================================
+     * SUBSCRIPTION EVENTS
+     * ============================================
+     * Synchronize provider subscriptions with Stripe. Processing is
+     * idempotent: syncFromStripeSubscription upserts by professionalId /
+     * stripeSubscriptionId, so duplicate webhook deliveries are safe.
+     */
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const subscription =
+        event.data.object as Stripe.Subscription;
+
+      await SubscriptionService.syncFromStripeSubscription(subscription);
+
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const subscription =
+        event.data.object as Stripe.Subscription;
+
+      await SubscriptionService.syncFromStripeSubscription(subscription);
+
+      break;
+    }
+
+    case "invoice.paid":
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+
+      if (invoice.subscription) {
+        const subscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription.id;
+
+        if (subscriptionId) {
+          try {
+            const subscription =
+              await stripe.subscriptions.retrieve(subscriptionId);
+            await SubscriptionService.syncFromStripeSubscription(subscription);
+          } catch (error) {
+            console.error(
+              "Failed to sync subscription from invoice event:",
+              error
+            );
+          }
+        }
       }
 
       break;

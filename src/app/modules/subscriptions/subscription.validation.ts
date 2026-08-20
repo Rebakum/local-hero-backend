@@ -1,7 +1,27 @@
 import { z } from "zod";
 
 const PLANS = ["FREE", "PREMIUM", "FEATURED"] as const;
-const STATUSES = ["ACTIVE", "EXPIRED", "CANCELLED"] as const;
+const STATUSES = ["ACTIVE", "TRIALING", "PAST_DUE", "INCOMPLETE", "CANCELLED", "EXPIRED"] as const;
+
+// New Stripe-backed subscription flows take only a planId — never a price or
+// Stripe price ID from the client.
+const checkoutValidation = z.object({
+  body: z.object({
+    planId: z.string().uuid("Invalid plan ID"),
+  }),
+});
+
+const changePlanValidation = z.object({
+  body: z.object({
+    planId: z.string().uuid("Invalid plan ID"),
+  }),
+});
+
+const featureCheckoutValidation = z.object({
+  body: z.object({
+    addonId: z.string().uuid("Invalid add-on ID"),
+  }),
+});
 
 const createSubscriptionValidation = z.object({
   body: z.object({
@@ -78,4 +98,7 @@ export const SubscriptionValidation = {
   updateSubscriptionValidation,
   getSubscriptionValidation,
   listSubscriptionsQueryValidation,
+  checkoutValidation,
+  changePlanValidation,
+  featureCheckoutValidation,
 };

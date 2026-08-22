@@ -14,12 +14,7 @@ const getThread = async (id: string) => {
   return thread;
 };
 
-/**
- * Frictionless thread creation:
- * - Logged-in users: attach userId + sessionId.
- * - Guests: pass a client-generated sessionId (crypto.randomUUID) and start
- *   chatting immediately — no name/email wall.
- */
+
 const createThread = async (input: CreateThreadInput, userId?: string) => {
   const sessionId = input.sessionId?.trim() || undefined;
   const thread = await prisma.supportChatThread.create({
@@ -72,7 +67,7 @@ const sendMessage = async (
 };
 
 /**
- * Build the conversation history (Anthropic format) from persisted messages,
+ * Build the conversation history for the AI provider from persisted messages,
  * then generate + persist + broadcast an AI reply.
  */
 const generateAndSendAiReply = async (threadId: string, history: { senderRole: string; body: string }[]) => {

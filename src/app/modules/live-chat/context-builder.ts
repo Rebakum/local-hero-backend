@@ -1,13 +1,5 @@
 import prisma from "../../../config/prisma";
 
-/**
- * RAG-style context builder for the AI live-chat assistant.
- *
- * Builds a LocalHero-specific system prompt from live database records so the
- * model answers from real platform data (FAQs, trades, professions, plans)
- * instead of making things up. The result is cached for a SHORT time only
- * (2 minutes) so admin edits to FAQs / plans are reflected quickly.
- */
 
 const CONTEXT_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -110,11 +102,7 @@ You MUST respond with valid JSON only, in this exact shape:
 {"reply": "your answer text", "needsHuman": true|false}`;
 };
 
-/**
- * Returns the assembled system prompt, refreshing the underlying data at most
- * once every CONTEXT_TTL_MS. Callers that need fresher data can pass
- * `force = true` (used when an admin has just changed content).
- */
+
 export const buildLocalHeroContext = async (force = false): Promise<string> => {
   if (!force && contextCache && Date.now() - contextCache.builtAt < CONTEXT_TTL_MS) {
     return contextCache.prompt;

@@ -6,8 +6,7 @@ import { LiveChatController } from "./live-chat.controller";
 
 const router = Router();
 
-// Frictionless start — no name/email required; optionalAuth attaches the
-// logged-in user when present, and the body carries a client sessionId.
+
 router.post("/threads", optionalAuth, LiveChatController.create);
 router.get("/threads/:id", LiveChatController.get);
 

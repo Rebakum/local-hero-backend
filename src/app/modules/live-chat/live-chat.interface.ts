@@ -2,8 +2,7 @@ export interface CreateThreadInput {
   name?: string;
   email?: string;
   body?: string;
-  // Frictionless guest sessions: the widget sends a client-generated
-  // sessionId (crypto.randomUUID) which becomes the thread identifier.
+
   sessionId?: string;
 }
 

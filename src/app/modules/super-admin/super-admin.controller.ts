@@ -38,9 +38,16 @@ const changeUserRole = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, "User role updated successfully", result);
 });
 
+const getSystemHealth = catchAsync(async (_req: Request, res: Response) => {
+  const result = await SuperAdminService.getSystemHealth();
+
+  sendResponse(res, 200, "System health retrieved successfully", result);
+});
+
 export const SuperAdminController = {
   getPendingUsers,
   approveUser,
   rejectUser,
   changeUserRole,
+  getSystemHealth,
 };

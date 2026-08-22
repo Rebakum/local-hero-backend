@@ -1,0 +1,11 @@
+model AvailabilityOption {
+  id        String   @id @default(uuid())
+  value     String   @unique
+  label     String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("availability_options")
+}

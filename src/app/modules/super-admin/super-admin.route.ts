@@ -36,4 +36,11 @@ router.patch(
   SuperAdminController.changeUserRole
 );
 
+router.get(
+  "/system/health",
+  authGuard,
+  roleGuard("ADMIN", "SUPER_ADMIN"),
+  SuperAdminController.getSystemHealth
+);
+
 export const SuperAdminRoutes = router;

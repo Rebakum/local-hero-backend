@@ -43,6 +43,16 @@ export interface IGetAllProfessionalsQuery {
   featured?: string;
   search?: string;
   location?: string;
+  // --- Smart search filters ---
+  rating?: string; // minimum rating (gte)
+  minPrice?: string; // hourlyRate lower bound
+  maxPrice?: string; // hourlyRate upper bound
+  isVerified?: string; // "true" | "false"
+  isEmergency?: string; // "true" | "false"
+  availability?: string; // e.g. "Available Today"
+  postcode?: string; // user postcode for local-area (distance) filtering
+  distance?: string; // radius in miles (approximation via postcode area)
+  sortBy?: string; // rating-desc | reviews-desc | name-asc | hourly-asc | hourly-desc | featured
 }
 
 export const CreateProfessionalValidation = z.object({

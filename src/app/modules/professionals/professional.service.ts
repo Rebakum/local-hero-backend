@@ -4,12 +4,34 @@ import { resolveTradeRelations } from "../../utils/tradeResolver";
 import { recalculateActiveProsCount } from "../trades/trade.service";
 import { IGetAllProfessionalsQuery } from "./professional.interface";
 
+// Resolve the ordering used by the smart-search sort control. Defaults to
+// the curated sort order (featured first, then manual order).
+const buildOrderBy = (sortBy?: string): Record<string, unknown>[] => {
+  switch (sortBy) {
+    case "rating-desc":
+      return [{ rating: "desc" as const }, { sortOrder: "asc" as const }];
+    case "reviews-desc":
+      return [{ reviewCount: "desc" as const }, { sortOrder: "asc" as const }];
+    case "name-asc":
+      return [{ name: "asc" as const }];
+    case "hourly-asc":
+      return [{ hourlyRate: "asc" as const }];
+    case "hourly-desc":
+      return [{ hourlyRate: "desc" as const }];
+    case "featured":
+      return [{ isFeatured: "desc" as const }, { sortOrder: "asc" as const }];
+    default:
+      return [{ sortOrder: "asc" as const }];
+  }
+};
+
 const getAll = async (query: IGetAllProfessionalsQuery) => {
   const page = parseInt(query.page || "1", 10);
   const limit = parseInt(query.limit || "10", 10);
   const skip = (page - 1) * limit;
 
   const where: Record<string, unknown> = {};
+  const orConditions: Record<string, unknown>[] = [];
 
   if (query.trade) {
     where.trade = query.trade;
@@ -20,14 +42,71 @@ const getAll = async (query: IGetAllProfessionalsQuery) => {
   }
 
   if (query.search) {
-    where.OR = [
+    orConditions.push(
       { name: { contains: query.search, mode: "insensitive" } },
-      { companyName: { contains: query.search, mode: "insensitive" } },
-    ];
+      { companyName: { contains: query.search, mode: "insensitive" } }
+    );
   }
 
   if (query.location) {
     where.location = { contains: query.location, mode: "insensitive" };
+  }
+
+  // --- Smart search filters ---
+  if (query.rating) {
+    const minRating = parseFloat(query.rating);
+    if (!Number.isNaN(minRating) && minRating > 0) {
+      where.rating = { gte: minRating };
+    }
+  }
+
+  if (query.minPrice || query.maxPrice) {
+    const hourlyRateFilter: Record<string, number> = {};
+    if (query.minPrice) {
+      const minPrice = parseFloat(query.minPrice);
+      if (!Number.isNaN(minPrice)) hourlyRateFilter.gte = minPrice;
+    }
+    if (query.maxPrice) {
+      const maxPrice = parseFloat(query.maxPrice);
+      if (!Number.isNaN(maxPrice)) hourlyRateFilter.lte = maxPrice;
+    }
+    if (Object.keys(hourlyRateFilter).length > 0) {
+      where.hourlyRate = hourlyRateFilter;
+    }
+  }
+
+  if (query.isVerified === "true") where.isVerified = true;
+  if (query.isVerified === "false") where.isVerified = false;
+
+  if (query.isEmergency === "true") where.isEmergency = true;
+  if (query.isEmergency === "false") where.isEmergency = false;
+
+  if (query.availability) {
+    where.availability = {
+      contains: query.availability,
+      mode: "insensitive",
+    };
+  }
+
+  // Distance is an approximation (no geocoding): match pros whose postcode
+  // area / location shares the user's outward postcode code.
+  if (query.postcode && query.distance) {
+    const outward = query.postcode
+      .trim()
+      .split(/\s+/)[0]
+      .replace(/[^A-Za-z]/g, "")
+      .toUpperCase()
+      .slice(0, 2);
+    if (outward) {
+      orConditions.push(
+        { postcodeArea: { startsWith: outward } },
+        { location: { startsWith: outward, mode: "insensitive" } }
+      );
+    }
+  }
+
+  if (orConditions.length > 0) {
+    where.OR = orConditions;
   }
 
   const [professionals, total] = await Promise.all([
@@ -35,7 +114,7 @@ const getAll = async (query: IGetAllProfessionalsQuery) => {
       where,
       skip,
       take: limit,
-      orderBy: { sortOrder: "asc" },
+      orderBy: buildOrderBy(query.sortBy),
       include: {
         testimonialsReceived: {
           where: { isApproved: true },

@@ -50,7 +50,7 @@ export const initSocket = (httpServer: HttpServer): Server => {
 
   io.use((socket, next) => {
     const userId = authenticate(socket);
-    if (!userId) {
+    if (!userId && socket.handshake.auth?.guest !== true) {
       return next(new Error("Unauthorized"));
     }
     socket.data.userId = userId;
@@ -58,8 +58,13 @@ export const initSocket = (httpServer: HttpServer): Server => {
   });
 
   io.on("connection", (socket) => {
-    const userId = socket.data.userId as string;
-    socket.join(`user:${userId}`);
+    const userId = socket.data.userId as string | null;
+    if (userId) socket.join(`user:${userId}`);
+    socket.on("live-chat:join", (threadId: string) => {
+      if (typeof threadId === "string" && threadId.length < 80) {
+        socket.join(`chat:${threadId}`);
+      }
+    });
   });
 
   return io;

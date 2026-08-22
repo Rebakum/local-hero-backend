@@ -1,0 +1,51 @@
+// ============================================================
+// LIVE CHAT (AI-powered support)
+// ============================================================
+//
+// Thread status lifecycle:
+//   AI_ACTIVE      → the assistant auto-replies to every user message
+//   PENDING_HUMAN  → a human hand-off was requested (AI stops replying);
+//                    admins see it in the queue and reply manually
+//   RESOLVED       → closed (by an admin, or re-opened by the user later)
+//
+// senderRole on SupportChatMessage:
+//   GUEST / USER   → the visitor
+//   AI             → the Claude assistant (auto-generated reply)
+//   ADMIN          → a manual admin reply
+
+model SupportChatThread {
+  id            String              @id @default(uuid())
+  userId        String?
+  guestName     String?
+  guestEmail    String?
+
+  // sessionId identifies the browser session for frictionless guest chats.
+  sessionId     String?
+
+  status        String              @default("AI_ACTIVE")
+
+  resolvedAt    DateTime?
+
+  lastMessageAt DateTime            @default(now())
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  messages      SupportChatMessage[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status, lastMessageAt])
+}
+
+model SupportChatMessage {
+  id        String            @id @default(uuid())
+  threadId  String
+  senderId  String?
+  // GUEST | USER | AI | ADMIN
+  senderRole String
+  body      String
+  createdAt DateTime          @default(now())
+  thread    SupportChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}

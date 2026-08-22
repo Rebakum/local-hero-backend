@@ -15,6 +15,7 @@
     "db:cleanup-orphans": "ts-node prisma/cleanup-orphan-users.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@prisma/adapter-pg": "^6.19.3",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.5.1",

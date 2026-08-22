@@ -6,9 +6,11 @@ import { SuperAdminRoutes } from "../modules/super-admin/super-admin.route";
 import { ProfessionalRoutes } from "../modules/professionals/professional.route";
 import { ProfessionRoutes } from "../modules/professions/profession.route";
 import { TradeRoutes } from "../modules/trades/trade.route";
+import { AvailabilityOptionRoutes } from "../modules/availability-options/availability-option.route";
 import { FeaturedServiceRoutes } from "../modules/featured-services/featured-service.route";
 import { BeforeAfterRoutes } from "../modules/before-after/before-after.route";
 import { TestimonialRoutes } from "../modules/testimonials/testimonial.route";
+import { FaqRoutes } from "../modules/faqs/faq.route";
 import { ProviderApplicationRoutes } from "../modules/provider-applications/provider-application.route";
 import { UploadRoutes } from "../modules/upload/upload.route";
 import { BookingRoutes } from "../modules/bookings/booking.route";
@@ -19,6 +21,7 @@ import { NotificationRoutes } from "../modules/notifications/notification.route"
 import { SubscriptionRoutes } from "../modules/subscriptions/subscription.route";
 import { FavouriteRoutes } from "../modules/favourites/favourite.route";
 import { SupportTicketRoutes } from "../modules/support-tickets/support-ticket.route";
+import { LiveChatRoutes } from "../modules/live-chat/live-chat.route";
 
 const router = Router();
 
@@ -30,9 +33,11 @@ const moduleRoutes = [
   { path: "/professionals", route: ProfessionalRoutes },
   { path: "/professions", route: ProfessionRoutes },
   { path: "/trades", route: TradeRoutes },
+  { path: "/availability-options", route: AvailabilityOptionRoutes },
   { path: "/featured-services", route: FeaturedServiceRoutes },
   { path: "/before-after", route: BeforeAfterRoutes },
   { path: "/testimonials", route: TestimonialRoutes },
+  { path: "/faqs", route: FaqRoutes },
   { path: "/provider-applications", route: ProviderApplicationRoutes },
   { path: "/uploads", route: UploadRoutes },
   { path: "/bookings", route: BookingRoutes },
@@ -43,6 +48,7 @@ const moduleRoutes = [
   { path: "/subscriptions", route: SubscriptionRoutes },
   { path: "/favourites", route: FavouriteRoutes },
   { path: "/support-tickets", route: SupportTicketRoutes },
+  { path: "/live-chat", route: LiveChatRoutes },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

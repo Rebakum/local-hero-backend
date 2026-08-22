@@ -10,10 +10,7 @@ import { PaymentValidation } from "./payment.validation";
 
 const router = Router();
 
-/**
- * Admin & Super Admin
- * Payment history
- */
+
 router.get(
   "/history",
   authGuard,
@@ -21,10 +18,7 @@ router.get(
   PaymentController.getAllPayments
 );
 
-/**
- * Admin & Super Admin
- * Payment statistics
- */
+
 router.get(
   "/stats",
   authGuard,
@@ -32,10 +26,7 @@ router.get(
   PaymentController.getPaymentStats
 );
 
-/**
- * Customer
- * Create Stripe Checkout Session
- */
+
 router.post(
   "/checkout/:bookingId",
   authGuard,
@@ -46,10 +37,7 @@ router.post(
   PaymentController.createCheckoutSession
 );
 
-/**
- * Customer/Admin/Super Admin
- * Get payment by booking
- */
+
 router.get(
   "/:bookingId",
   authGuard,
@@ -59,10 +47,7 @@ router.get(
   PaymentController.getPaymentByBooking
 );
 
-/**
- * Admin & Super Admin
- * Refund a booking's payment
- */
+
 router.post(
   "/:bookingId/refund",
   authGuard,

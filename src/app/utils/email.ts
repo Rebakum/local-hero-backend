@@ -692,6 +692,11 @@ const sendVerificationEmail = async (
   token: string
 ): Promise<void> => {
   const verifyUrl = `${config.clientUrl}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(to)}`;
+
+  if (config.nodeEnv !== "production" && !config.smtp.user) {
+    console.log(`[DEV] Verification URL: ${verifyUrl}`);
+  }
+
   await send(
     to,
     "Verify your LocalHero email",

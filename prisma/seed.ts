@@ -11,43 +11,10 @@ const LOCAL_IMAGE_F = "https://i.postimg.cc/FRfJSTsJ/service7.png";
 const LOCAL_IMAGE_G = "https://i.postimg.cc/x1YHZGtn/service8.png";
 const LOCAL_IMAGE_H = "https://i.postimg.cc/nLhmFF8V/servuce1.png";
 
-const beforeAfterProjects = [
-  {
-    title: "Kitchen Transformation",
-    trade: "Plumber",
-    location: "Fulham, London",
-    beforeImage: LOCAL_IMAGE_A,
-    afterImage: LOCAL_IMAGE_B,
-    description:
-      "Complete pipework rerouting, brass tapware installation, and Metro subway tile splashback in a 19th-century Fulham property.",
-    cost: "£1,850",
-    completionDays: "3 Days",
-    sortOrder: 0,
-  },
-  {
-    title: "Garden Makeover",
-    trade: "Gardener",
-    location: "Altrincham, Greater Manchester",
-    beforeImage: LOCAL_IMAGE_C,
-    afterImage: LOCAL_IMAGE_D,
-    description:
-      "Cleared 40sqm of overgrown brambles, installed sub-base drainage, laid Grey Italian Porcelain slabs and outdoor LED mood lights.",
-    cost: "£4,200",
-    completionDays: "5 Days",
-    sortOrder: 1,
-  },
-  {
-    title: "Alcove Transformation",
-    trade: "Carpenter",
-    location: "Harborne, Birmingham",
-    beforeImage: LOCAL_IMAGE_E,
-    afterImage: LOCAL_IMAGE_F,
-    description:
-      "Handcrafted moisture-resistant MDF twin alcove cupboards with traditional shaker doors and integrated warm LED strip lighting.",
-    cost: "£1,400",
-    completionDays: "2 Days",
-    sortOrder: 2,
-  },
+const availabilityOptions = [
+  { value: "Available Today", label: "Available Today", sortOrder: 0 },
+  { value: "Available Tomorrow", label: "Available Tomorrow", sortOrder: 1 },
+  { value: "Booked 2 Days", label: "Booked 2 Days", sortOrder: 2 },
 ];
 
 const faqs = [
@@ -378,6 +345,13 @@ async function main() {
   await prisma.professional.deleteMany();
   await prisma.profession.deleteMany();
   await prisma.trade.deleteMany();
+  await prisma.availabilityOption.deleteMany();
+
+  // Seed availability options.
+  for (const option of availabilityOptions) {
+    await prisma.availabilityOption.create({ data: option });
+  }
+  console.log(`Seeded ${availabilityOptions.length} availability options`);
 
   // Seed trades + professions (Trade -> Profession). No professionals are
   // seeded: they only exist after an admin approves a ProviderApplication.
@@ -409,12 +383,6 @@ async function main() {
     }
   }
   console.log(`Seeded ${trades.length} trades + professions`);
-
-  // Seed before/after projects
-  for (const project of beforeAfterProjects) {
-    await prisma.beforeAfterProject.create({ data: project });
-  }
-  console.log(`Seeded ${beforeAfterProjects.length} before/after projects`);
 
   // Seed FAQs
   for (const faq of faqs) {

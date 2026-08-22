@@ -73,6 +73,19 @@ const config = {
       process.env.ENVIRONMENT_VARIABLE_STRIPE_WEBHOOK_SECRET || "",
   },
 
+  anthropic: {
+    // Anthropic API key for the AI-powered live chat assistant.
+    // Get one at: https://console.anthropic.com/settings/keys
+    apiKey:
+      process.env.ENVIRONMENT_VARIABLE_ANTHROPIC_API_KEY || "",
+
+    // Claude model used for chat replies. "claude-sonnet-4-6" is the current
+    // Sonnet tier; set ANTHROPIC_MODEL to override at deploy time.
+    model:
+      process.env.ENVIRONMENT_VARIABLE_ANTHROPIC_MODEL ||
+      "claude-sonnet-4-6",
+  },
+
 
   smtp: {
     host: process.env.ENVIRONMENT_VARIABLE_SMTP_HOST || "",

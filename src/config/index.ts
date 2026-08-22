@@ -79,11 +79,11 @@ const config = {
     apiKey:
       process.env.ENVIRONMENT_VARIABLE_ANTHROPIC_API_KEY || "",
 
-    // Claude model used for chat replies. "claude-sonnet-4-6" is the current
-    // Sonnet tier; set ANTHROPIC_MODEL to override at deploy time.
+    // Claude model used for chat replies. Set ANTHROPIC_MODEL to override at
+    // deploy time when switching to another model supported by the account.
     model:
       process.env.ENVIRONMENT_VARIABLE_ANTHROPIC_MODEL ||
-      "claude-sonnet-4-6",
+      "claude-sonnet-4-20250514",
   },
 
 

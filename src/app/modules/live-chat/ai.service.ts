@@ -72,6 +72,7 @@ export const generateAiReply = async (
 
     return parseAiReply(text);
   } catch (error) {
+    console.error("[LiveChat] Full Anthropic error:", error);
     const detail = error instanceof Error ? error.message : String(error);
     console.error("[LiveChat] Anthropic call failed:", detail);
     return {
